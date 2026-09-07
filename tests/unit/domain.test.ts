@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { build2GisUrl, buildYandexMapsUrl, fullAddress } from '../../lib/maps.ts';
+import { parseSalary, fingerprint, hasRole, localDay, readFilters, salaryLabel } from '../../lib/domain.ts';
+import { sign, verifySignature } from '../../lib/signature.ts';
+import { allowedPushEndpoint } from '../../services/push/safety.ts';
+const addresses = ['Новосибирск, ул. Большевистская, 45', 'Новосибирск, Красный проспект, 10', 'Новосибирск, ул. Ленина, 5, корпус 2', 'Томск, ул. Мира, 12/1', 'Омск, ул. Рабочая, 3 & 4'];
+for (const address of addresses) {
+    test('2ГИС: точное кодирование ' + address, () => assert.equal(decodeURIComponent(new URL(build2GisUrl(address)).pathname.slice('/search/'.length)), address));
+    test('Яндекс: точное кодирование ' + address, () => assert.equal(new URL(buildYandexMapsUrl(address)).searchParams.get('text'), address));
+}
+test('нет адреса, нет ссылки', () => { assert.equal(fullAddress('Новосибирск', null), null); assert.equal(fullAddress('Новосибирск', ' '), null); assert.throws(() => build2GisUrl('')); assert.throws(() => buildYandexMapsUrl(' ')); });
+test('город не дублируется', () => assert.equal(fullAddress('Новосибирск', addresses[0]), addresses[0]));
+test('добавляем город к реальному адресу', () => assert.equal(fullAddress('Новосибирск', 'ул. Ленина, 1'), 'Новосибирск, ул. Ленина, 1'));
+test('оплата за смену', () => assert.deepEqual(parseSalary('Оплата 4 500 ₽ / смена'), { salary_min: 4500, salary_max: 4500, salary_type: 'shift' }));
+test('диапазон оплаты', () => assert.deepEqual(parseSalary('4000-5000 руб за смену'), { salary_min: 4000, salary_max: 5000, salary_type: 'shift' }));
+test('часы не зарплата', () => assert.equal(parseSalary('09:00-18:00, телефон +7 900 123-45-67').salary_min, null));
+test('без единицы не угадываем', () => assert.equal(parseSalary('Оплата 4500 ₽').salary_type, null));
+test('месячная оплата', () => assert.equal(parseSalary('60 000 рублей в месяц').salary_type, 'month'));
+test('обратный диапазон не угадываем', () => assert.equal(parseSalary('5000-4000 ₽').salary_min, null));
+test('неизвестная зарплата видна явно', () => assert.equal(salaryLabel({ salary_min: null, salary_max: null, salary_type: null }), 'Оплата не указана'));
+test('идентичные объявления дедуплицируются', () => assert.equal(fingerprint({ title: 'Грузчик', description: ' Нужен  грузчик ' }), fingerprint({ title: 'грузчик', description: 'Нужен грузчик' })));
+test('другой контакт не объединяется', () => assert.notEqual(fingerprint({ title: 'Грузчик', contact_phone: '1' }), fingerprint({ title: 'Грузчик', contact_phone: '2' })));
+test('другая дата не объединяется', () => assert.notEqual(fingerprint({ title: 'Грузчик', date_start: '2026-09-07' }), fingerprint({ title: 'Грузчик', date_start: '2026-09-08' })));
+test('другая оплата не объединяется', () => assert.notEqual(fingerprint({ salary_min: 4000 }), fingerprint({ salary_min: 5000 })));
+test('права работодателя не дают админку', () => { assert.equal(hasRole(['user', 'employer'], 'admin'), false); assert.equal(hasRole(['user', 'employer'], 'employer'), true); assert.equal(hasRole(null, 'admin'), false); });
+test('локальная дата на границе суток', () => assert.equal(localDay(new Date('2026-09-07T17:01:00Z')), '2026-09-08'));
+test('завтра на границе месяца', () => assert.equal(localDay(new Date('2026-09-30T10:00:00Z'), 1), '2026-10-01'));
+test('параметры поиска не портят диапазон', () => { const f = readFilters({ q: ' грузчик ', min: '-100', page: '-4', address: '1', employer: '0' }); assert.equal(f.q, 'грузчик'); assert.equal(f.min, null); assert.equal(f.page, 1); assert.equal(f.address, true); assert.equal(f.employer, false); });
+test('минимум и дата фильтра', () => { const f = readFilters({ min: '4000', day: '2026-09-07' }); assert.equal(f.min, 4000); assert.equal(f.day, '2026-09-07'); });
+test('корректная подпись webhook', () => { const ts = String(Math.floor(Date.now() / 1000)); assert.ok(verifySignature('body', ts, sign('body', ts, 'secret'), 'secret')); });
+test('подмена тела webhook', () => { const ts = String(Math.floor(Date.now() / 1000)); assert.equal(verifySignature('changed', ts, sign('body', ts, 'secret'), 'secret'), false); });
+test('просроченная подпись', () => assert.equal(verifySignature('body', '1', sign('body', '1', 'secret'), 'secret'), false));
+test('невалидная длина подписи не вызывает исключения', () => assert.equal(verifySignature('body', '1', 'xx', 'secret'), false));
+test('защита endpoint от SSRF', () => { for (const url of ['http://127.0.0.1', 'https://127.0.0.1', 'https://fcm.googleapis.com.evil.org', 'https://fcm.googleapis.com:123/', 'https://u:p@fcm.googleapis.com/'])
+    assert.equal(allowedPushEndpoint(url), false); assert.ok(allowedPushEndpoint('https://fcm.googleapis.com/fcm/send/abc')); assert.ok(allowedPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/abc')); });

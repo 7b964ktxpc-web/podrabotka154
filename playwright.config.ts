@@ -1,0 +1,2 @@
+import { defineConfig, devices } from '@playwright/test';
+export default defineConfig({ testDir: 'tests/e2e', fullyParallel: false, use: { baseURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000', trace: 'retain-on-failure' }, projects: [{ name: 'mobile', use: { ...devices['iPhone 13'], browserName: 'chromium' } }], webServer: { command: 'npm run dev', url: 'http://localhost:3000', reuseExistingServer: !process.env.CI } });

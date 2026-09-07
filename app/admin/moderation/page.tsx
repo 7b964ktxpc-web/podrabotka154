@@ -1,0 +1,10 @@
+import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
+import { check } from '@/lib/service-db';
+import { ActionForm } from '@/components/action-form';
+import { moderateJob } from '@/app/actions';
+export default async function Moderation({ searchParams }: {
+    searchParams: Promise<{
+        page?: string;
+    }>;
+}) { const page = Math.max(1, Math.min(1000, Number((await searchParams).page) || 1)); const { client } = await requireAdmin(); const { data: jobs, count } = check(await client.from('jobs').select('*,employers(name)', { count: 'exact' }).in('status', ['pending_moderation', 'draft']).order('created_at').range((page - 1) * 20, page * 20 - 1)); return <><h1>Модерация</h1><p>Автоматический парсер не публикует объявления. Проверьте оригинал, оплату, адрес и контакты.</p>{jobs?.length ? jobs.map(j => <details key={j.id} open><summary>{j.title} · {j.status}</summary><p className="small muted">Работодатель: {j.employers?.name || 'Не указан'} · confidence: {j.ai_confidence ?? 'не применяется'} · {new Date(j.created_at).toLocaleString('ru-RU')}</p><p className="message">{j.moderation_reason || 'Ручная проверка'}</p><p style={{ whiteSpace: 'pre-wrap' }}>{j.original_text || j.description}</p><p><Link className="button" href={'/jobs/' + j.id + '/edit'}>Проверить и исправить поля</Link></p><ActionForm action={moderateJob} label="Применить решение"><input type="hidden" name="id" value={j.id}/><label>Решение<select name="status" defaultValue="draft"><option value="draft">Запросить изменения, вернуть в черновик</option><option value="published">Опубликовать</option><option value="rejected">Отклонить</option><option value="archived">Архивировать</option></select></label><label>Причина<textarea name="reason" maxLength={1000} placeholder="Что нужно исправить или почему принято решение"/></label></ActionForm></details>) : <p>Нет объявлений, ожидающих проверки.</p>}<nav>{page > 1 && <Link href={'?page=' + (page - 1)}>← Назад</Link>}{(count || 0) > page * 20 && <Link href={'?page=' + (page + 1)}>Дальше →</Link>}</nav></>; }

@@ -1,0 +1,83 @@
+<!doctype html><html lang="ru"><head>
+<!-- skill:chrome -->
+<style>
+/* Credit line — bottom-right */
+.design-ui-credit {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  font: 11px/1 system-ui, sans-serif;
+  color: rgba(128,128,128,0.5);
+  pointer-events: none;
+  z-index: 2147483647;
+  transition: opacity 0.4s ease;
+  user-select: none;
+  letter-spacing: 0.02em;
+}
+
+/* Hide chrome on touch devices */
+@media (hover: none) {
+  .design-ui-credit { display: none; }
+}
+
+/* Print fixes */
+@media print {
+  * {
+    transition: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+  }
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .design-ui-credit { display: none !important; }
+}
+
+</style>
+<script>
+(function () {
+    // Design-ui pages are single compositions, so the whole body is editable.
+    function markEditable() {
+        document.body.classList.add('artifact-editable');
+    }
+
+    // Credit badge with idle-fade. Hover devices only.
+    function initChromeUI() {
+        if (!matchMedia('(hover: hover)').matches) return;
+
+        var credit = document.createElement('div');
+        credit.className = 'design-ui-credit';
+        credit.setAttribute('aria-hidden', 'true');
+        credit.innerHTML = '\u{1F49C} by ClickUp Brain';
+        document.body.appendChild(credit);
+
+        var timer = null;
+        var fade = function (out) { credit.style.opacity = out ? '0' : ''; };
+        fade(true);
+        var show = function () {
+            fade(false);
+            clearTimeout(timer);
+            timer = setTimeout(function () { fade(true); }, 3000);
+        };
+        document.addEventListener('mousemove', show);
+        show();
+    }
+
+    function init() {
+        markEditable();
+        initChromeUI();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+
+</script>
+<!-- /skill:chrome --><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Подработка 154 · Первый запуск</title><style>:root{--bg:oklch(98% .008 55);--fg:oklch(25% .012 55);--muted:oklch(49% .012 55);--accent:oklch(53% .17 38);--line:oklch(87% .012 55);--surface:oklch(99.5% .004 55)}*{box-sizing:border-box}body{margin:0;font:16px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--fg)}main{max-width:850px;margin:auto;padding:32px 24px 80px}header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-bottom:28px;border-bottom:1px solid var(--line)}.brand{font-weight:800;font-size:21px;letter-spacing:-.6px}.brand b{background:var(--accent);color:var(--surface);padding:4px 8px;border-radius:7px}.label{font-size:12px;color:var(--muted)}h1{font-size:clamp(36px,7vw,64px);line-height:1.05;letter-spacing:-.045em;margin:48px 0 20px;max-width:15ch}h2{font-size:24px;letter-spacing:-.025em;margin:0 0 12px}p{max-width:65ch}.lead{font-size:20px;color:var(--muted)}.notice{background:oklch(94% .03 55);padding:20px;border-radius:12px;margin:28px 0 40px}.step{display:grid;grid-template-columns:40px 1fr;gap:16px;padding:28px 0;border-top:1px solid var(--line)}.number{color:var(--accent);font-size:22px;font-variant-numeric:tabular-nums;font-weight:700}.step p{color:var(--muted);margin:8px 0 16px}.step.done h2{text-decoration:line-through;color:var(--muted)}a{color:var(--accent);text-underline-offset:3px}button{font:inherit;min-height:44px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer}button:hover{background:oklch(94% .015 55)}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}code{font:14px/1.7 ui-monospace,monospace;overflow-wrap:anywhere}pre{padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:9px;white-space:pre-wrap}small{color:var(--muted)}details{margin-top:16px}summary{cursor:pointer;min-height:44px;padding:8px 0}footer{margin-top:36px;padding-top:24px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}#status{min-height:24px;font-size:14px;color:var(--accent)}@media(max-width:540px){main{padding:24px 16px 48px}header{flex-wrap:wrap;gap:8px}h1{margin-top:32px}.step{grid-template-columns:28px 1fr;gap:12px}.lead{font-size:18px}}@media(prefers-reduced-motion:no-preference){button:active{transform:translateY(1px)}}</style></head><body><main><header><div class="brand">подработка <b>154</b></div><span class="label">Исходники MVP · версия 0.1</span></header><h1>От архива к первому объявлению.</h1><p class="lead">Короткий маршрут запуска. Код и подробные инструкции находятся в ZIP-архиве проекта.</p><div class="notice"><strong>Это инструкция, не запущенный сайт.</strong><p>В архиве нет выдуманных вакансий. В среде подготовки прошли 42 unit-теста; полный запуск Next.js, Supabase и браузерная приёмка ещё обязательны.</p></div><div class="row"><b id="progress">0 из 6 шагов отмечено</b><button id="reset">Сбросить отметки</button></div><p id="status" role="status"></p><section class="step" data-step="1"><span class="number">01</span><div><h2>Подготовить среду</h2><p>Распакуйте ZIP на компьютере с Node.js 22.18+ и npm. Откройте README.md, затем SETUP.md. С телефона пока можно подготовить аккаунты.</p><a href="https://nodejs.org/" target="_blank" rel="noopener noreferrer">Node.js ↗</a><p><button class="complete" aria-pressed="false">Отметить выполненным</button></p></div></section><section class="step" data-step="2"><span class="number">02</span><div><h2>Создать базу</h2><p>Создайте новый Supabase-проект. Выполните миграции 001…008 по порядку, затем seed.sql: он содержит справочники, а не вакансии.</p><a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer">Открыть Supabase ↗</a><p><button class="complete" aria-pressed="false">Отметить выполненным</button></p></div></section><section class="step" data-step="3"><span class="number">03</span><div><h2>Настроить доступы</h2><p>Скопируйте .env.example в .env.local и заполните серверные ключи. Для регистрации посетителей настройте SMTP и адреса возврата Supabase Auth.</p><strong>Пароли и токены не отправляйте в чат.</strong><p><button class="complete" aria-pressed="false">Отметить выполненным</button></p></div></section><section class="step" data-step="4"><span class="number">04</span><div><h2>Запустить сайт и worker</h2><pre><code id="commands">npm install
+npm run typecheck
+npm test
+npm run dev</code></pre><button id="copy">Скопировать команды</button><p>В другом терминале запустите <code>npm run worker</code>. Зарегистрируйтесь и назначьте первого администратора командой из SETUP.md.</p><p><button class="complete" aria-pressed="false">Отметить выполненным</button></p></div></section><section class="step" data-step="5"><span class="number">05</span><div><h2>Добавить реальное объявление</h2><p>Ваш первый канал чужой: начните с ручного импорта оригинала через админку и ручной модерации. Автоматический приём ботом возможен только для каналов, куда его добавил владелец.</p><details><summary>Что проверить перед публикацией</summary><p>Реальность контактов и условий, право на публикацию текста, адрес и зарплату. Если информации нет, оставьте поле пустым. Не заполняйте его догадкой.</p></details><p><button class="complete" aria-pressed="false">Отметить выполненным</button></p></div></section><section class="step" data-step="6"><span class="number">06</span><div><h2>Пройти приёмку и разместить</h2><p>Выполните QA.md: сборка, RLS, регистрация, поиск, избранное, карты и мобильный экран. Затем настройте хостинг и отдельное выполнение worker.</p><div class="row"><a href="https://github.com/new" target="_blank" rel="noopener noreferrer">Создать репозиторий ↗</a><a href="https://app.netlify.com/" target="_blank" rel="noopener noreferrer">Открыть Netlify ↗</a></div><p>Платежи в этой версии только тестовые. Бесплатные тарифы имеют ограничения; не включайте платные дополнения автоматически.</p><button class="complete" aria-pressed="false">Отметить выполненным</button></div></section><footer>Отметки хранятся только в этом браузере. Они не проверяют запуск автоматически и не отправляются на сервер. Источник правды о готовности: QA.md и FEATURES.md в архиве.</footer></main><script>const key='p154-launch-checklist-v1';let done=[];try{const v=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(v))done=v.filter(x=>Number.isInteger(x)&&x>=1&&x<=6)}catch{}function render(){document.querySelectorAll('[data-step]').forEach(s=>{const yes=done.includes(Number(s.dataset.step));s.classList.toggle('done',yes);const b=s.querySelector('.complete');b.setAttribute('aria-pressed',String(yes));b.textContent=yes?'Выполнено, отменить отметку':'Отметить выполненным'});document.querySelector('#progress').textContent=done.length+' из 6 шагов отмечено'}function save(){try{localStorage.setItem(key,JSON.stringify(done))}catch{document.querySelector('#status').textContent='Хранилище браузера недоступно. Отметки действуют до закрытия страницы.'}render()}document.querySelectorAll('.complete').forEach(b=>b.addEventListener('click',()=>{const n=Number(b.closest('[data-step]').dataset.step);done=done.includes(n)?done.filter(x=>x!==n):[...done,n];save()}));document.querySelector('#reset').onclick=()=>{done=[];save()};document.querySelector('#copy').onclick=async()=>{try{await navigator.clipboard.writeText(document.querySelector('#commands').textContent);document.querySelector('#status').textContent='Команды скопированы. Выполняйте их в папке проекта.'}catch{document.querySelector('#status').textContent='Не удалось скопировать автоматически. Выделите команды и скопируйте вручную.'}};render();</script></body></html>
