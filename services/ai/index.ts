@@ -20,8 +20,6 @@ function extractAddress(text: string): string | null {
     const explicit = text.match(/(?:^|\n)\s*(?:адрес|место|локация)\s*:\s*([^\n]+)/iu)?.[1];
     if (explicit && /\d/.test(explicit)) return cleanCandidate(explicit);
     for (const rawLine of text.split(/\r?\n/).map(x => x.trim()).filter(Boolean)) {
-        // Check address patterns before noise detection: address and salary/contact
-        // can be written in one line, e.g. "Большая 582 ... Оплата ...".
         const prefixedWithNumber = rawLine.match(STREET_WITH_NUMBER)?.[0]; if (prefixedWithNumber) return cleanCandidate(prefixedWithNumber);
         const namedWithType = rawLine.match(STREET_NAME_WITH_TYPE)?.[0]; if (namedWithType) return cleanCandidate(namedWithType);
         const namedWithNumber = rawLine.match(NAMED_STREET_WITH_NUMBER)?.[0]; if (namedWithNumber) return cleanCandidate(namedWithNumber);
@@ -50,7 +48,7 @@ function extractPaymentType(text: string): string | null {
     const normalized = text.toLocaleLowerCase('ru').replace(/ё/g, 'е');
     if (/(?:наличн(?:ыми|ые)|наличк(?:ой|а)|налом|за наличн)/iu.test(normalized)) return 'immediate';
     if (/(?:на карту|перевод(?:ом)?|безнал(?:ичный|ом)?|по карте)/iu.test(normalized)) return 'immediate';
-    if (/(?:расчет|расчёт)\s+(?:после|по окончании)\s+(?:смены|работы)|по факту\s+(?:смены|работы)|оплата\s+после\s+смены/iu.test(normalized)) return 'immediate';
+    if (/(?:расчет|расчёт)\s+(?:после|по окончании)\s+(?:смены|работы)|по факту\s+(?:смены|работы)|оплата(?:\s+[^\n]{0,80})?\s+после\s+смены/iu.test(normalized)) return 'immediate';
     if (/(?:ежедневн(?:ая|о)|каждый день)\s+(?:оплата|расчет|расчёт)|оплата\s+ежедневно/iu.test(normalized)) return 'daily';
     if (/(?:еженедельн(?:ая|о)|раз в неделю|оплата\s+еженедельно)/iu.test(normalized)) return 'weekly';
     if (/(?:ежемесячн(?:ая|о)|раз в месяц|оплата\s+ежемесячно)/iu.test(normalized)) return 'monthly';
