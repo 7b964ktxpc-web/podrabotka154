@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { serviceDb } from '@/lib/service-db';
 import { fingerprint } from '@/lib/domain';
 import { createVacancyParser } from '@/services/ai/agent';
 import { PublicChannelAdapter } from '@/services/telegram';
@@ -14,8 +14,9 @@ export async function GET(request: Request) {
   if (cronSecret && request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  if (!cronSecret) return NextResponse.json({ error: 'Cron protection is not configured' }, { status: 503 });
 
-  const client = await db();
+  const client = serviceDb();
   const { data: sources, error } = await client.rpc('list_public_telegram_sources');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -41,13 +42,12 @@ export async function GET(request: Request) {
       for (const message of newMessages) {
         try {
           const parsedJob = await parser.parse(message.message_text);
-          checkPublicResult(
-            await client.rpc('store_public_telegram_parsed', {
-              p_message: message.id,
-              p_result: parsedJob,
-              p_fingerprint: fingerprint({ ...parsedJob, city: null }),
-            }),
-          );
+          const stored = await client.rpc('store_public_telegram_parsed', {
+            p_message: message.id,
+            p_result: parsedJob,
+            p_fingerprint: fingerprint({ ...parsedJob, city: null }),
+          });
+          if (stored.error) throw stored.error;
           parsed++;
           processed++;
         } catch {
@@ -68,9 +68,4 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({ ok: true, results, queue: { processed, failed } });
-}
-
-function checkPublicResult<T extends { error: unknown }>(result: T): T {
-  if (result.error) throw result.error;
-  return result;
 }
