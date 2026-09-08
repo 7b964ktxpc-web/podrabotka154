@@ -83,46 +83,89 @@ function normalize(value: unknown): ParsedJob {
   return out;
 }
 
+function normalizedSource(text: string): string {
+  return text.toLocaleLowerCase('ru').replace(/ё/g, 'е');
+}
+
+function sourceHasText(text: string, value: string): boolean {
+  const source = normalizedSource(text);
+  const candidate = normalizedSource(value).trim();
+  if (!candidate) return false;
+  if (source.includes(candidate)) return true;
+  const tokens = candidate.split(/\s+/).filter(token => token.length >= 3);
+  return tokens.length > 0 && tokens.filter(token => source.includes(token)).length >= Math.min(2, tokens.length);
+}
+
 function sourceHasNumber(text: string, value: number): boolean {
-  const raw = String(value);
-  return text.replace(/\s/g, '').includes(raw);
+  if (!Number.isFinite(value)) return false;
+  const compact = String(value).replace(/\.0+$/, '');
+  const escaped = compact.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const spaced = compact.replace(/(?<=\d)(?=(\d{3})+$)/g, '[ .,_]?');
+  const pattern = new RegExp(`(?<!\\d)${escaped}(?!\\d)|(?<!\\d)${spaced}(?!\\d)`, 'u');
+  return pattern.test(text.replace(/\u00a0/g, ' '));
 }
 
 function sourceHasContact(text: string, value: string): boolean {
-  const source = text.toLocaleLowerCase('ru');
-  const candidate = value.toLocaleLowerCase('ru');
-  if (source.includes(candidate)) return true;
+  const source = normalizedSource(text);
+  const candidate = normalizedSource(value).replace(/^@/, '');
+  if (!candidate) return false;
+  if (source.includes(candidate) || source.includes(`@${candidate}`)) return true;
   const sourceDigits = source.replace(/\D/g, '');
   const candidateDigits = candidate.replace(/\D/g, '');
   return candidateDigits.length >= 7 && sourceDigits.includes(candidateDigits);
 }
 
 function sourceHasAddress(text: string, value: string): boolean {
-  const normalizeAddress = (input: string) => input.toLocaleLowerCase('ru').replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/giu, ' ').trim();
+  const normalizeAddress = (input: string) => normalizedSource(input).replace(/[^a-zа-я0-9]+/giu, ' ').trim();
   const source = normalizeAddress(text);
   const address = normalizeAddress(value);
-  if (!address || source.includes(address)) return Boolean(address);
+  if (!address) return false;
+  if (source.includes(address)) return true;
   const tokens = address.split(/\s+/).filter(token => token.length >= 3);
-  const matched = tokens.filter(token => source.includes(token));
-  return matched.length >= Math.min(2, tokens.length);
+  return tokens.length > 0 && tokens.filter(token => source.includes(token)).length >= Math.min(2, tokens.length);
+}
+
+function sourceHasDate(text: string, value: string): boolean {
+  const [year, month, day] = value.split('-');
+  const source = normalizedSource(text);
+  const numeric = new RegExp(`(?<!\\d)(?:${day}[-./]${month}|${day}[-./]${month}[-./]${year})(?!\\d)`);
+  const monthNames = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  const named = `${Number(day)} ${monthNames[Number(month) - 1]}`;
+  return numeric.test(source) || source.includes(named) || source.includes(`${day}.${month}.${year}`);
+}
+
+function sourceHasTime(text: string, value: string): boolean {
+  const [hour, minute] = value.split(':');
+  const source = text.replace(/\u00a0/g, ' ');
+  const h = Number(hour);
+  const m = Number(minute);
+  const variants = [
+    `${hour}:${minute}`, `${hour}.${minute}`, `${hour} ${minute}`,
+    `${h}:${minute}`, `${h}.${minute}`, `${h} ${minute}`,
+  ];
+  return variants.some(item => source.includes(item));
 }
 
 /** Remove AI values that cannot be grounded in the original Telegram text. */
 export function groundAiResult(result: ParsedJob, sourceText: string): ParsedJob {
   const out = { ...result };
-  if (out.title && !sourceHasAddress(sourceText, out.title) && !sourceText.toLocaleLowerCase('ru').includes(out.title.toLocaleLowerCase('ru'))) out.title = null;
-  if (out.address && !sourceHasAddress(sourceText, out.address)) out.address = null;
-  if (out.city && !sourceText.toLocaleLowerCase('ru').includes(out.city.toLocaleLowerCase('ru'))) out.city = null;
-  if (out.salary_min !== null && !sourceHasNumber(sourceText, out.salary_min)) out.salary_min = null;
-  if (out.salary_max !== null && !sourceHasNumber(sourceText, out.salary_max)) out.salary_max = null;
+  let removed = 0;
+
+  if (out.title && !sourceHasText(sourceText, out.title)) { out.title = null; removed++; }
+  if (out.address && !sourceHasAddress(sourceText, out.address)) { out.address = null; removed++; }
+  if (out.city && !sourceHasText(sourceText, out.city)) { out.city = null; removed++; }
+  if (out.salary_min !== null && !sourceHasNumber(sourceText, out.salary_min)) { out.salary_min = null; removed++; }
+  if (out.salary_max !== null && !sourceHasNumber(sourceText, out.salary_max)) { out.salary_max = null; removed++; }
   if (out.salary_min === null && out.salary_max === null) out.salary_type = null;
-  if (out.date_start && !sourceText.includes(out.date_start.slice(8, 10)) && !sourceText.includes(out.date_start.slice(0, 4))) out.date_start = null;
-  if (out.date_end && !sourceText.includes(out.date_end.slice(8, 10)) && !sourceText.includes(out.date_end.slice(0, 4))) out.date_end = null;
-  if (out.time_start && !sourceText.replace(/\s/g, '').includes(out.time_start.replace(':', ''))) out.time_start = null;
-  if (out.time_end && !sourceText.replace(/\s/g, '').includes(out.time_end.replace(':', ''))) out.time_end = null;
-  if (out.contact_phone && !sourceHasContact(sourceText, out.contact_phone)) out.contact_phone = null;
-  if (out.contact_telegram && !sourceHasContact(sourceText, `@${out.contact_telegram}`)) out.contact_telegram = null;
-  if (out.contact_email && !sourceHasContact(sourceText, out.contact_email)) out.contact_email = null;
+  if (out.date_start && !sourceHasDate(sourceText, out.date_start)) { out.date_start = null; removed++; }
+  if (out.date_end && !sourceHasDate(sourceText, out.date_end)) { out.date_end = null; removed++; }
+  if (out.time_start && !sourceHasTime(sourceText, out.time_start)) { out.time_start = null; removed++; }
+  if (out.time_end && !sourceHasTime(sourceText, out.time_end)) { out.time_end = null; removed++; }
+  if (out.contact_phone && !sourceHasContact(sourceText, out.contact_phone)) { out.contact_phone = null; removed++; }
+  if (out.contact_telegram && !sourceHasContact(sourceText, out.contact_telegram)) { out.contact_telegram = null; removed++; }
+  if (out.contact_email && !sourceHasContact(sourceText, out.contact_email)) { out.contact_email = null; removed++; }
+
+  if (removed > 0) out.confidence = Math.max(0, out.confidence - Math.min(0.4, removed * 0.08));
   return out;
 }
 
