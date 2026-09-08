@@ -3,53 +3,36 @@ import { requireAdmin } from '@/lib/auth';
 import { check } from '@/lib/service-db';
 import { ActionForm } from '@/components/action-form';
 import { moderateJob } from '@/app/actions';
-import { salaryLabel } from '@/lib/domain';
+import { employmentLabel, paymentLabel, salaryLabel } from '@/lib/domain';
 
-function value(v: unknown) {
-    return v === null || v === undefined || v === '' ? '—' : String(v);
-}
+function value(v: unknown) { return v === null || v === undefined || v === '' ? '—' : String(v); }
 
-export default async function Moderation({ searchParams }: {
-    searchParams: Promise<{ page?: string }>;
-}) {
+export default async function Moderation({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
     const page = Math.max(1, Math.min(1000, Number((await searchParams).page) || 1));
     const { client } = await requireAdmin();
-    const { data: jobs, count } = check(await client
-        .from('jobs')
-        .select('*,employers(name)', { count: 'exact' })
-        .in('status', ['pending_moderation', 'draft'])
-        .order('created_at')
-        .range((page - 1) * 20, page * 20 - 1));
-
+    const { data: jobs, count } = check(await client.from('jobs').select('*,employers(name)', { count: 'exact' }).in('status', ['pending_moderation', 'draft']).order('created_at').range((page - 1) * 20, page * 20 - 1));
     return <>
         <h1>Модерация</h1>
         <p>Автоматический парсер не публикует объявления. Проверьте оригинал, оплату, адрес и контакты.</p>
         {jobs?.length ? jobs.map(j => <details key={j.id} open>
             <summary>{j.title} · {j.status}</summary>
             <p className="small muted">Работодатель: {j.employers?.name || 'Не указан'} · confidence: {j.ai_confidence ?? 'не применяется'} · {new Date(j.created_at).toLocaleString('ru-RU')}</p>
-
             <div className="panel" style={{ margin: '12px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
                 <div><strong>Оплата</strong><br />{salaryLabel(j)}</div>
-                <div><strong>Способ оплаты</strong><br />{value(j.payment_type)}</div>
-                <div><strong>Занятость</strong><br />{value(j.employment_type)}</div>
+                <div><strong>Способ оплаты</strong><br />{paymentLabel(j.payment_type) || '—'}</div>
+                <div><strong>Занятость</strong><br />{employmentLabel(j.employment_type) || '—'}</div>
                 <div><strong>Адрес</strong><br />{value(j.address_raw)}</div>
                 <div><strong>Дата</strong><br />{value(j.date_start)}</div>
                 <div><strong>Время</strong><br />{j.time_start || j.time_end ? `${j.time_start ? `с ${j.time_start}` : ''}${j.time_start && j.time_end ? ' ' : ''}${j.time_end ? `до ${j.time_end}` : ''}` : '—'}</div>
                 <div><strong>Телефон</strong><br />{value(j.contact_phone)}</div>
                 <div><strong>Telegram</strong><br />{value(j.contact_telegram)}</div>
             </div>
-
             <p className="message">{j.moderation_reason || 'Ручная проверка'}</p>
             <p style={{ whiteSpace: 'pre-wrap' }}>{j.original_text || j.description}</p>
             <p><Link className="button" href={'/jobs/' + j.id + '/edit'}>Проверить и исправить поля</Link></p>
             <ActionForm action={moderateJob} label="Применить решение">
                 <input type="hidden" name="id" value={j.id}/>
-                <label>Решение<select name="status" defaultValue="draft">
-                    <option value="draft">Запросить изменения, вернуть в черновик</option>
-                    <option value="published">Опубликовать</option>
-                    <option value="rejected">Отклонить</option>
-                    <option value="archived">Архивировать</option>
-                </select></label>
+                <label>Решение<select name="status" defaultValue="draft"><option value="draft">Запросить изменения, вернуть в черновик</option><option value="published">Опубликовать</option><option value="rejected">Отклонить</option><option value="archived">Архивировать</option></select></label>
                 <label>Причина<textarea name="reason" maxLength={1000} placeholder="Что нужно исправить или почему принято решение"/></label>
             </ActionForm>
         </details>) : <p>Нет объявлений, ожидающих проверки.</p>}
