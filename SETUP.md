@@ -2,7 +2,7 @@
 
 ## 1. Среда
 
-Node.js 22.18+ с npm, Git по желанию, доступ в интернет для пакетов и Supabase. Подойдёт Windows, macOS или Linux. Телефон не обязан хранить код или секреты; использовать терминал на телефоне для первого запуска не рекомендуется.
+Node.js 22.18+ с npm, Git по желанию, доступ в интернет для пакетов и Supabase. Подойдёт Windows, macOS или Linux.
 
 ```sh
 node --version
@@ -10,114 +10,138 @@ npm --version
 npm install
 ```
 
-Зависимости заданы совместимыми диапазонами. Здесь нет `package-lock.json`, потому что пакеты нельзя было получить из сети. После первой успешной установки сохраните и проверьте lockfile, выполните `npm audit`, затем закоммитьте его и используйте `npm ci`. Не применяйте `npm audit fix --force` вслепую.
+Lockfile пока отсутствует, поэтому Render/CI используют `npm install`. После успешной установки отдельно сохраните lockfile и перейдите на `npm ci`, когда это будет сделано осознанно.
 
 ## 2. Supabase
 
-Откройте https://supabase.com/dashboard и создайте **новый** проект на подходящем бесплатном тарифе. Проверьте текущие квоты, доступность из своего региона и требования к размещению персональных данных. Пароль PostgreSQL храните у себя.
+Используйте проект Supabase и применяйте миграции из `supabase/migrations` **по порядку от 001 до текущей (019)**. Не запускайте их повторно в уже инициализированной базе и не смешивайте миграции этого проекта с чужой схемой.
 
-В SQL Editor поочерёдно выполните полное содержимое:
+Ветка `render` уже рассчитана на актуальную схему с публичным Telegram-импортом, дедупликацией и ограничением прямого доступа к импортным RPC. Для существующего проекта сначала проверьте `supabase/migrations` и список применённых миграций в Supabase.
 
-1. `supabase/migrations/001_schema.sql`
-2. `supabase/migrations/002_functions.sql`
-3. `supabase/migrations/003_storage.sql`
-4. `supabase/migrations/004_notifications.sql`
-5. `supabase/migrations/005_analytics.sql`
-6. `supabase/migrations/006_admin.sql`
-7. `supabase/migrations/007_consistency.sql`
-8. `supabase/migrations/008_limits.sql`
-9. `supabase/seed.sql`
+После миграций при необходимости примените `supabase/seed.sql` только к новой/тестовой базе.
 
-Эти миграции создают новую схему: не выполняйте их повторно и не применяйте к чужому работающему проекту. Supabase предоставляет `auth.users`, роли `anon/authenticated/service_role` и схему Storage. Обычный PostgreSQL без Supabase Auth/Storage не является drop-in заменой данной реализации.
+## 3. Переменные окружения
 
-## 3. Переменные
-
-Скопируйте `.env.example` в `.env.local` (Windows: `Copy-Item .env.example .env.local`, macOS/Linux: `cp .env.example .env.local`).
+Скопируйте `.env.example` в `.env.local`.
 
 | Переменная | Значение |
 |---|---|
-| NEXT_PUBLIC_APP_URL | `http://localhost:3000` локально, фактический HTTPS-домен на хостинге |
+| NEXT_PUBLIC_APP_URL | `http://localhost:3000` локально; на Render — фактический HTTPS-адрес |
 | SUPABASE_URL | URL проекта Supabase |
-| SUPABASE_ANON_KEY | anon/publishable key для публичного API под RLS; в этой архитектуре используется на сервере |
-| SUPABASE_SERVICE_ROLE_KEY | привилегированный серверный ключ, никогда не `NEXT_PUBLIC_…` |
-| DEMO_DATA | `false`; демовакансии в архив не включены |
+| SUPABASE_ANON_KEY | publishable/anon key для клиентских операций под RLS |
+| SUPABASE_SERVICE_ROLE_KEY | серверный привилегированный ключ, никогда не `NEXT_PUBLIC_…` |
+| DEMO_DATA | `false` |
 | PARSER_PROVIDER | `conservative` |
-| TELEGRAM_BOT_TOKEN | только для управляемого вами бота, необязателен при ручном импорте |
-| TELEGRAM_WEBHOOK_SECRET | случайные 32+ символа A-Z/a-z/0-9/_/- |
-| TELEGRAM_API_ID / TELEGRAM_API_HASH | зарезервированы, текущая версия их не использует |
-| WORKER_INTERVAL_SECONDS | интервал циклов, минимум 10 секунд |
-| WORKER_BATCH_SIZE | заданий за цикл, от 1 до 20 |
-| PUSH_PUBLIC_KEY / PUSH_PRIVATE_KEY | пара VAPID, публичный ключ может быть передан браузеру |
-| PUSH_SUBJECT | ваш реальный `mailto:` контакт администратора |
+| CRON_SECRET | секрет для Render cron → `/api/telegram/import-public` |
+| TELEGRAM_BOT_TOKEN | необязателен для публичного web-импорта; нужен только для bot webhook-сценария |
+| TELEGRAM_WEBHOOK_SECRET | случайный секрет для webhook |
+| TELEGRAM_API_ID / TELEGRAM_API_HASH | текущая версия публичного web-адаптера их не требует |
+| WORKER_INTERVAL_SECONDS | интервал worker, минимум 10 секунд |
+| WORKER_BATCH_SIZE | заданий за цикл, 1–20 |
+| PUSH_PUBLIC_KEY / PUSH_PRIVATE_KEY | VAPID-пара |
+| PUSH_SUBJECT | реальный `mailto:` контакт администратора |
 | PAYMENT_PROVIDER | `sandbox` |
-| PAYMENT_WEBHOOK_SECRET | случайный секрет 32+ символа, не пароль аккаунта |
-| SANDBOX_PAYMENTS_ENABLED | `false` по умолчанию; `true` только для тестового flow |
-| TEST_SUPABASE_* | отдельная одноразовая тестовая база, не production |
-| E2E_* | аккаунты только для тестового окружения |
+| PAYMENT_WEBHOOK_SECRET | случайный секрет |
+| SANDBOX_PAYMENTS_ENABLED | `false`, включать только для тестов |
 
-Выполните проверку наличия значений:
+Проверьте env:
 
 ```sh
 node --env-file=.env.local scripts/check-env.mjs
 ```
 
-Она не подтверждает доступность серверов. Ключ `AI_API_KEY` не нужен, платный AI не используется.
+Платный `AI_API_KEY` для текущего conservative-парсера не нужен.
 
-## 4. Auth и почта
+## 4. Render
 
-В Supabase Auth задайте Site URL и Redirect URLs:
+Рабочая ветка — `render`.
 
-- `http://localhost:3000/auth/callback`
-- `http://localhost:3000/auth/callback?next=/profile/password`
-- те же пути на фактическом HTTPS-домене.
+Web-сервис:
 
-Включите подтверждение email. Настройте собственный SMTP для общедоступной регистрации и сброса пароля: https://supabase.com/docs/guides/auth/auth-smtp. Встроенная почта Supabase ограничена адресами команды и тестовыми лимитами; это не бесплатная production-почта для всех посетителей. Выберите SMTP с подходящими бесплатными лимитами, настройте подтверждённого отправителя, SPF/DKIM. Покупать сервис без проверки необходимости не нужно.
-
-Для изолированных тестов аккаунты можно создавать через Supabase Dashboard с подтверждённым email. Отключение проверки email не является рекомендуемой production-настройкой.
-
-## 5. Запуск
-
-```sh
-npm run typecheck
-npm test
-npm run dev
+```text
+https://podrabotka154.onrender.com
 ```
 
-Откройте http://localhost:3000. В отдельном терминале:
+Blueprint `render.yaml` содержит web service и отдельный cron `podrabotka154-telegram-import`, который каждые 15 минут запускает `scripts/render-cron-import.mjs`.
 
-```sh
-npm run worker
+Важно: файл `render.yaml` сам по себе не подтверждает, что Render уже синхронизировал cron. Это проверяется в панели Render.
+
+## 5. Telegram-импорт
+
+Для публичного канала используется `@rabota154NsK`.
+
+Endpoint:
+
+```text
+GET /api/telegram/import-public
+Authorization: Bearer <CRON_SECRET>
 ```
 
-Зарегистрируйтесь, подтвердите email. В Supabase Auth Users найдите UUID и выдайте роль:
+Импорт получает публичные сообщения, сохраняет новые записи в `telegram_messages`, разбирает их консервативным парсером и создаёт/обновляет вакансии со статусом `pending_moderation`. Автоматической публикации нет.
+
+Повторный импорт не должен создавать второй job для того же Telegram-сообщения.
+
+## 6. Auth и администратор
+
+В Supabase Auth задайте Site URL и callback/redirect URL для локального адреса и фактического Render HTTPS-домена.
+
+После регистрации пользователя подтвердите email, найдите UUID в Supabase Authentication → Users и локально выполните:
 
 ```sh
 npm run admin -- AUTH_USER_UUID
 ```
 
-Откройте `/profile`, затем `/admin`. Секреты остаются на сервере. Для работодателя сначала заполните `/employer`.
+Не публикуйте UUID, пароли или service-role ключ в GitHub/чаты.
 
-## 6. Первое реальное объявление
+## 7. Локальный запуск
 
-Для работодателя: профиль → разместить → предпросмотр → отправить на публикацию → администратор проверяет → опубликовать.
+```sh
+npm run typecheck
+npm test
+npm run build
+npm start
+```
 
-Для вашего случая с чужим каналом: `/admin/telegram` → активировать источник в manual-режиме → вставить **реальный** номер, дату и полный текст сообщения, на публикацию которого есть основание → worker → модерация. Не заменяйте импорт вымышленными примерами.
+Отдельный worker:
 
-## 7. Push
+```sh
+npm run worker
+# или один цикл
+npm run worker:once
+```
+
+Для задач Telegram web-импорта worker не нужен: публичный импорт выполняется самим endpoint. Worker нужен для остальных фоновых задач очереди.
+
+## 8. Первое реальное объявление
+
+Путь работодателя:
+
+`профиль → разместить → предпросмотр → отправить → модерация → публикация`.
+
+Путь Telegram:
+
+`Render cron/import → Supabase → /admin/moderation → проверить поля → опубликовать`.
+
+Если в тексте нет адреса, даты, времени, оплаты или контакта — ничего не придумывать. Модератор должен проверить оригинал и при необходимости вернуть объявление в черновик.
+
+## 9. Push
+
+Сгенерируйте VAPID-ключи:
 
 ```sh
 npm run keys
 ```
 
-Сохраните пару ключей в env, перезапустите web и worker. Откройте сайт на HTTPS либо localhost, войдите, сохраните поиск с уведомлениями и включите Push в профиле. Опубликуйте подходящую вакансию **после** создания поиска. Worker отправит уведомление.
+Сохраните ключи в env, войдите на HTTPS, сохраните поиск с уведомлениями и включите Push в профиле.
 
-На iOS поддержка Web Push зависит от версии ОС и установки сайта на главный экран. Неподдерживаемые браузеры должны показывать объяснение. Не сохраняйте приватный VAPID-ключ в браузере.
+## 10. Финальная проверка
 
-## 8. Проверка перед размещением
+Перед открытием сервиса:
 
 ```sh
+npm run typecheck
+npm test
 npm run build
-npm run start
 ```
 
-Полный порядок проверок в QA.md. При ошибке остановите выпуск и исправьте её. Архив не содержит результатов реального запуска Supabase или Next.
+Затем проверьте на Render `/`, `/jobs`, `/login`, `/admin/moderation`, публичный Telegram-import и повторный импорт без дублей. Полный acceptance checklist находится в `QA.md`.
