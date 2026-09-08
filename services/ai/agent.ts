@@ -1,5 +1,5 @@
-import type { JobParser } from './index';
-import { ConservativeParser } from './index';
+import type { JobParser } from './index.ts';
+import { ConservativeParser } from './index.ts';
 import type { ParsedJob } from '../../lib/domain.ts';
 
 const SYSTEM_PROMPT = `Ты ИИ-агент разбора вакансий для сервиса Подработка 154.
