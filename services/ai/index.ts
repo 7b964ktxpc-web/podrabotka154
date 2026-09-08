@@ -20,7 +20,11 @@ export class HumanReviewModerator implements JobModerator {
 }
 
 const STREET_WITH_NUMBER = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?)\s+[А-Яа-яЁёA-Za-z0-9.-]{2,40}(?:\s+[А-Яа-яЁёA-Za-z0-9.-]{2,40})?\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
-const NAMED_STREET_WITH_NUMBER = /\b(?:[А-ЯЁ][а-яё-]{3,39}(?:ая|яя|ская|цкая|овская|евская|инская|ская|ский|цкий|овский|евский|инский|ово|ево))\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/u;
+// Common Russian street names are often written without "ул.". Keep this
+// deliberately limited to adjective-like street names to avoid treating
+// arbitrary "слово 1" lines such as "еще 1" as addresses.
+const NAMED_STREET_WITH_NUMBER = /\b(?:[А-ЯЁ][а-яё-]{3,39}(?:ая|яя|ная|овая|евая|иевая|ивная|ская|цкая|овская|евская|инская|овская|евская|инская|овский|евский|инский|ово|ево))\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/u;
+const STREET_NAME_WITH_TYPE = /\b[А-ЯЁ][а-яё-]{3,39}\s+(?:улица|ул\.)\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
 const STREET_WITHOUT_NUMBER = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?)\s+[А-Яа-яЁёA-Za-z-]{3,40}(?:\s+[А-Яа-яЁёA-Za-z-]{2,40})?/iu;
 // Do not treat arbitrary "слово 1" lines (e.g. "еще 1") as an address.
 // Generic settlement + house number is accepted only with a comma or a known locality.
@@ -45,6 +49,9 @@ function extractAddress(text: string): string | null {
 
         const prefixedWithNumber = rawLine.match(STREET_WITH_NUMBER)?.[0];
         if (prefixedWithNumber) return cleanCandidate(prefixedWithNumber);
+
+        const namedWithType = rawLine.match(STREET_NAME_WITH_TYPE)?.[0];
+        if (namedWithType) return cleanCandidate(namedWithType);
 
         const namedWithNumber = rawLine.match(NAMED_STREET_WITH_NUMBER)?.[0];
         if (namedWithNumber) return cleanCandidate(namedWithNumber);
