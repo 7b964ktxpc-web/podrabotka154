@@ -24,7 +24,9 @@ services:
     branch: render
     schedule: "*/15 * * * *"
     buildCommand: npm install
-    startCommand: curl --fail --show-error --silent --max-time 60 -H "Authorization: Bearer ${CRON_SECRET}" https://podrabotka154.onrender.com/api/telegram/import-public
+    startCommand: node scripts/render-cron-import.mjs
     envVars:
+      - key: RENDER_URL
+        value: https://podrabotka154.onrender.com
       - key: CRON_SECRET
         sync: false
