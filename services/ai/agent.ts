@@ -83,6 +83,49 @@ function normalize(value: unknown): ParsedJob {
   return out;
 }
 
+function sourceHasNumber(text: string, value: number): boolean {
+  const raw = String(value);
+  return text.replace(/\s/g, '').includes(raw);
+}
+
+function sourceHasContact(text: string, value: string): boolean {
+  const source = text.toLocaleLowerCase('ru');
+  const candidate = value.toLocaleLowerCase('ru');
+  if (source.includes(candidate)) return true;
+  const sourceDigits = source.replace(/\D/g, '');
+  const candidateDigits = candidate.replace(/\D/g, '');
+  return candidateDigits.length >= 7 && sourceDigits.includes(candidateDigits);
+}
+
+function sourceHasAddress(text: string, value: string): boolean {
+  const normalizeAddress = (input: string) => input.toLocaleLowerCase('ru').replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/giu, ' ').trim();
+  const source = normalizeAddress(text);
+  const address = normalizeAddress(value);
+  if (!address || source.includes(address)) return Boolean(address);
+  const tokens = address.split(/\s+/).filter(token => token.length >= 3);
+  const matched = tokens.filter(token => source.includes(token));
+  return matched.length >= Math.min(2, tokens.length);
+}
+
+/** Remove AI values that cannot be grounded in the original Telegram text. */
+export function groundAiResult(result: ParsedJob, sourceText: string): ParsedJob {
+  const out = { ...result };
+  if (out.title && !sourceHasAddress(sourceText, out.title) && !sourceText.toLocaleLowerCase('ru').includes(out.title.toLocaleLowerCase('ru'))) out.title = null;
+  if (out.address && !sourceHasAddress(sourceText, out.address)) out.address = null;
+  if (out.city && !sourceText.toLocaleLowerCase('ru').includes(out.city.toLocaleLowerCase('ru'))) out.city = null;
+  if (out.salary_min !== null && !sourceHasNumber(sourceText, out.salary_min)) out.salary_min = null;
+  if (out.salary_max !== null && !sourceHasNumber(sourceText, out.salary_max)) out.salary_max = null;
+  if (out.salary_min === null && out.salary_max === null) out.salary_type = null;
+  if (out.date_start && !sourceText.includes(out.date_start.slice(8, 10)) && !sourceText.includes(out.date_start.slice(0, 4))) out.date_start = null;
+  if (out.date_end && !sourceText.includes(out.date_end.slice(8, 10)) && !sourceText.includes(out.date_end.slice(0, 4))) out.date_end = null;
+  if (out.time_start && !sourceText.replace(/\s/g, '').includes(out.time_start.replace(':', ''))) out.time_start = null;
+  if (out.time_end && !sourceText.replace(/\s/g, '').includes(out.time_end.replace(':', ''))) out.time_end = null;
+  if (out.contact_phone && !sourceHasContact(sourceText, out.contact_phone)) out.contact_phone = null;
+  if (out.contact_telegram && !sourceHasContact(sourceText, `@${out.contact_telegram}`)) out.contact_telegram = null;
+  if (out.contact_email && !sourceHasContact(sourceText, out.contact_email)) out.contact_email = null;
+  return out;
+}
+
 function parseJson(text: string) {
   const cleaned = text.trim().replace(/^```(?:json)?/iu, '').replace(/```$/u, '').trim();
   return JSON.parse(cleaned);
@@ -112,9 +155,8 @@ export class AIVacancyAgent implements JobParser {
       const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
       const content = data.choices?.[0]?.message?.content;
       if (!content) throw new Error('AI parser returned empty response');
-      return normalize(parseJson(content));
+      return groundAiResult(normalize(parseJson(content)), text);
     } catch {
-      // AI is an enrichment layer. A temporary provider/API failure must not stop Telegram ingestion.
       return this.fallback.parse(text);
     }
   }
