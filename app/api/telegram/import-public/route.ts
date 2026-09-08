@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { serviceDb, check } from '@/lib/service-db';
 import { fingerprint } from '@/lib/domain';
-import { ConservativeParser } from '@/services/ai';
+import { createVacancyParser } from '@/services/ai/agent';
 import { PublicChannelAdapter } from '@/services/telegram';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const parser = new ConservativeParser();
+const parser = createVacancyParser();
 
 async function processQueue(db: any, limit = 20) {
     let processed = 0;
