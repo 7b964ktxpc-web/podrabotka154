@@ -15,7 +15,7 @@ const TIME = /\b(\d{1,2})[:.](\d{2})\b/u;
 const ROLE_WORDS = /(?:требуется|нужен|нужна|нужны|ищем|грузчик[аи]?|курьер|водитель|помощник|работник|человек|чел\.)/iu;
 
 function cleanCandidate(value: string): string { return value.replace(/^[\s•*—–-]+|[\s.,;:]+$/g, '').replace(/\s+/g, ' ').trim().slice(0, 140); }
-function isNoiseLine(line: string): boolean { return line.length > 240 || /^(?:телефон|контакт|звонить|писать|whatsapp|ватсап|@\w+|\+?\d[\d ()+-]{7,})$/iu.test(line); }
+function isNoiseLine(line: string): boolean { return line.length > 240 || /^(?:телефон|контакт|звонить|писать|whatsapp|ватсап|@\w+|[+]?\d[\d ()+-]{7,})$/iu.test(line); }
 function extractAddress(text: string): string | null {
     const explicit = text.match(/(?:^|\n)\s*(?:адрес|место|локация)\s*:\s*([^\n]+)/iu)?.[1];
     if (explicit && /\d/.test(explicit)) return cleanCandidate(explicit);
@@ -90,7 +90,7 @@ export class ConservativeParser implements JobParser {
         result.payment_type = extractPaymentType(cleanText);
         result.employment_type = extractEmploymentType(cleanText);
         result.contact_telegram = cleanText.match(/(?:https?:\/\/t\.me\/|(?<![\w.%+-])@)([A-Za-z][A-Za-z0-9_]{4,31})\b/)?.[1] ?? null;
-        result.contact_phone = cleanText.match(/(?:\+7|8)[ (\-]*\d{3}[ )\-]*\d{3}[ \-]*\d{2}[ \-]*\d{2}(?!\d)/)?.[0] ?? null;
+        result.contact_phone = cleanText.match(/(?:\+?7|8)[ (\-]*\d{3}[ )\-]*\d{3}[ \-]*\d{2}[ \-]*\d{2}(?!\d)/)?.[0] ?? null;
         result.contact_email = cleanText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
         result.address = extractAddress(cleanText); result.confidence = 0.35; return result;
     }
