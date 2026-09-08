@@ -16,7 +16,8 @@
     "worker:once": "tsx --env-file=.env.local worker/index.ts --once",
     "sandbox:pay": "tsx --env-file=.env.local scripts/sandbox-pay.ts",
     "admin": "tsx --env-file=.env.local scripts/admin.ts",
-    "keys": "web-push generate-vapid-keys --json"
+    "keys": "web-push generate-vapid-keys --json",
+    "render:import:check": "node scripts/render-import-check.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
