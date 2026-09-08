@@ -1,8 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ConservativeParser } from '../../services/ai/index.ts';
+import { groundAiResult } from '../../services/ai/agent.ts';
+import type { ParsedJob } from '../../lib/domain.ts';
 
 const parser = new ConservativeParser();
+
+const emptyJob = (): ParsedJob => ({
+    is_job: true, title: null, description: null, category: null,
+    salary_min: null, salary_max: null, salary_type: null, city: null, address: null,
+    date_start: null, date_end: null, time_start: null, time_end: null,
+    employment_type: null, payment_type: null, contact_phone: null,
+    contact_telegram: null, contact_email: null, confidence: 0.9,
+});
 
 test('новость не вакансия', async () => assert.equal((await parser.parse('В Новосибирске сегодня тепло и солнечно.')).is_job, false));
 
@@ -101,4 +111,30 @@ test('адрес и оплата могут находиться в одной �
     assert.equal(j.salary_min, 400);
     assert.equal(j.payment_type, 'immediate');
     assert.equal(j.contact_phone, '79513870400');
+});
+
+test('ИИ не может придумать адрес, зарплату и контакты', () => {
+    const job = emptyJob();
+    job.address = 'ул. Ленина 99';
+    job.salary_min = 9000;
+    job.contact_phone = '+79991234567';
+    job.contact_telegram = 'fake_contact';
+    const grounded = groundAiResult(job, 'Требуется грузчик. Большая 582. Оплата 400 руб. @real_contact 79513870400');
+    assert.equal(grounded.address, null);
+    assert.equal(grounded.salary_min, null);
+    assert.equal(grounded.contact_phone, null);
+    assert.equal(grounded.contact_telegram, null);
+});
+
+test('ИИ сохраняет поля, для которых есть доказательство в тексте', () => {
+    const job = emptyJob();
+    job.address = 'Большая 582';
+    job.salary_min = 400;
+    job.contact_phone = '79513870400';
+    job.contact_telegram = 'real_contact';
+    const grounded = groundAiResult(job, 'Требуется грузчик\nБольшая 582\n400 руб/час\n79513870400 @real_contact');
+    assert.equal(grounded.address, 'Большая 582');
+    assert.equal(grounded.salary_min, 400);
+    assert.equal(grounded.contact_phone, '79513870400');
+    assert.equal(grounded.contact_telegram, 'real_contact');
 });
