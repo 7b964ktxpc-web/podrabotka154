@@ -90,9 +90,12 @@ function extractDateTime(text: string): Pick<ParsedJob, 'date_start' | 'date_end
         else if (!time_start) time_start = time;
     }
 
-    // Bare time lines are common in dispatcher posts: "К 13:00" or "12:30".
+    // Bare time lines are common in dispatcher posts. Do not reuse lines
+    // that already have an explicit "с/от/к/до" meaning.
     if (!time_start) {
-        const bare = text.split(/\r?\n/).map(x => x.trim()).find(line => TIME.test(line) && line.length <= 12);
+        const bare = text.split(/\r?\n/).map(x => x.trim()).find(line =>
+            TIME.test(line) && line.length <= 12 && !/^(?:с|от|к|до)\s*\d{1,2}:\d{2}$/iu.test(line)
+        );
         if (bare) time_start = bare.match(TIME)?.[0] ?? null;
     }
 
