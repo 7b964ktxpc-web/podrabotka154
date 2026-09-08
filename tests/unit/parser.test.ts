@@ -138,3 +138,28 @@ test('ИИ сохраняет поля, для которых есть дока�
     assert.equal(grounded.contact_phone, '79513870400');
     assert.equal(grounded.contact_telegram, 'real_contact');
 });
+
+test('ИИ не принимает 400 как зарплату внутри телефона', () => {
+    const job = emptyJob();
+    job.salary_min = 400;
+    const grounded = groundAiResult(job, 'Требуется грузчик\n79513870400');
+    assert.equal(grounded.salary_min, null);
+});
+
+test('ИИ понимает дату в разных форматах и не принимает только год', () => {
+    const a = emptyJob();
+    a.date_start = '2026-09-09';
+    assert.equal(groundAiResult(a, 'Дата 09/09/2026').date_start, '2026-09-09');
+
+    const b = emptyJob();
+    b.date_start = '2026-09-09';
+    assert.equal(groundAiResult(b, 'Вакансия опубликована в 2026 году').date_start, null);
+});
+
+test('ИИ понимает время через точку и пробел', () => {
+    for (const source of ['На 14.00 нужен грузчик', 'На 14:00 нужен грузчик', 'На 14 00 нужен грузчик']) {
+        const job = emptyJob();
+        job.time_start = '14:00';
+        assert.equal(groundAiResult(job, source).time_start, '14:00');
+    }
+});
