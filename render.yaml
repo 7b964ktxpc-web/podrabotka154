@@ -2,7 +2,7 @@ services:
   - type: web
     name: podrabotka154
     runtime: node
-    branch: main
+    branch: render
     buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /
