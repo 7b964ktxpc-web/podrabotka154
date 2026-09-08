@@ -37,7 +37,8 @@ export async function GET(request: Request) {
       if (saveError) throw saveError;
 
       let parsed = 0;
-      for (const message of saved ?? []) {
+      const newMessages = (saved ?? []).filter((message: { is_new?: boolean }) => message.is_new === true);
+      for (const message of newMessages) {
         try {
           const parsedJob = await parser.parse(message.message_text);
           checkPublicResult(
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
 
       await adapter.disconnect();
       adapter = null;
-      results.push({ source: source.username, fetched: messages.length, saved: saved?.length ?? 0, parsed });
+      results.push({ source: source.username, fetched: messages.length, saved: saved?.length ?? 0, new_messages: newMessages.length, parsed });
     } catch (e) {
       if (adapter) {
         try { await adapter.disconnect(); } catch { /* ignore cleanup errors */ }
