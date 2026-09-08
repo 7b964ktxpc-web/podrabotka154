@@ -9,18 +9,18 @@ export const dynamic = 'force-dynamic';
 
 const parser = new ConservativeParser();
 
-async function processQueue(db: ReturnType<typeof serviceDb>, limit = 20) {
+async function processQueue(db: any, limit = 20) {
     let processed = 0;
     let failed = 0;
     for (let i = 0; i < limit; i++) {
         const { data: items } = check(await db.rpc('claim_work', { batch: 1 }));
-        const item = items?.[0];
+        const item: any = items?.[0];
         if (!item) break;
         try {
             if (item.kind === 'parse') {
                 const { data: message } = check(await db.from('telegram_messages').select('*').eq('id', item.payload.message_id).single());
-                const { data: source } = check(await db.from('telegram_sources').select('city_id,cities(name)').eq('id', message.source_id).single());
-                const city = (source?.cities as unknown as { name: string } | null)?.name ?? null;
+                const { data: source }: any = check(await db.from('telegram_sources').select('city_id,cities(name)').eq('id', message.source_id).single());
+                const city = source?.cities?.name ?? null;
                 const parsed = await parser.parse(message.message_text);
                 check(await db.rpc('store_parsed', {
                     p_message: message.id,
