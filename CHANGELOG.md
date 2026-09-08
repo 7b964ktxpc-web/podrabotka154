@@ -7,3 +7,5 @@
 - Added explicit map-link regression tests for 2GIS/Yandex address encoding.
 - Improved search placeholders and guidance for users.
 - Homepage wording now clearly targets Novosibirsk MVP.
+- Added admin-managed public Telegram sources with automatic validation and scheduled import.
+- Public Telegram imports feed the shared parsing/moderation queue instead of publishing jobs automatically.
