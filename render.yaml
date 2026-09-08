@@ -17,3 +17,14 @@ services:
         sync: false
       - key: CRON_SECRET
         sync: false
+
+  - type: cron
+    name: podrabotka154-telegram-import
+    runtime: node
+    branch: render
+    schedule: "*/15 * * * *"
+    buildCommand: npm install
+    startCommand: curl --fail --show-error --silent --max-time 60 -H "Authorization: Bearer ${CRON_SECRET}" https://podrabotka154.onrender.com/api/telegram/import-public
+    envVars:
+      - key: CRON_SECRET
+        sync: false
