@@ -23,8 +23,8 @@ const STREET_WITH_NUMBER = /(?:ул\.?|улица|просп\.?|проспект
 // Common Russian street names are often written without "ул.". Keep this
 // deliberately limited to adjective-like street names to avoid treating
 // arbitrary "слово 1" lines such as "еще 1" as addresses.
-const NAMED_STREET_WITH_NUMBER = /\b(?:[А-ЯЁ][а-яё-]{3,39}(?:ая|яя|ная|овая|евая|иевая|ивная|ская|цкая|овская|евская|инская|овская|евская|инская|овский|евский|инский|ово|ево))\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/u;
-const STREET_NAME_WITH_TYPE = /\b[А-ЯЁ][а-яё-]{3,39}\s+(?:улица|ул\.)\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
+const NAMED_STREET_WITH_NUMBER = /(?:^|[^А-Яа-яЁёA-Za-z])([А-ЯЁ][а-яё-]{3,39}(?:ая|яя|ная|овая|евая|иевая|ивная|ская|цкая|овская|евская|инская|овский|евский|инский|ово|ево))\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/u;
+const STREET_NAME_WITH_TYPE = /(?:^|[^А-Яа-яЁёA-Za-z])([А-ЯЁ][а-яё-]{3,39}\s+(?:улица|ул\.))\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
 const STREET_WITHOUT_NUMBER = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?)\s+[А-Яа-яЁёA-Za-z-]{3,40}(?:\s+[А-Яа-яЁёA-Za-z-]{2,40})?/iu;
 // Do not treat arbitrary "слово 1" lines (e.g. "еще 1") as an address.
 // Generic settlement + house number is accepted only with a comma or a known locality.
