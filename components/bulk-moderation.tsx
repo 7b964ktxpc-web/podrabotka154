@@ -1,16 +1,34 @@
+'use client';
+
+import { useMemo, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { bulkModerateJobs } from '@/app/actions';
 
-export function BulkModeration({ jobs }: { jobs: Array<{ id: string; title: string }> }) {
-  return <ActionForm action={bulkModerateJobs} label="Применить к выбранным" disabled={!jobs.length}>
-    <div className="panel" style={{ margin: '16px 0', display: 'grid', gap: 10 }}>
-      <strong>Массовая модерация</strong>
-      <label>Объявления<select name="ids" multiple required size={Math.min(8, Math.max(3, jobs.length))}>
-        {jobs.map((job) => <option key={job.id} value={job.id}>{job.title || 'Без названия'}</option>)}
-      </select></label>
-      <p className="small muted">Можно выбрать несколько объявлений. Перед публикацией проверьте данные ниже.</p>
+type Job = { id: string; title: string };
+
+export function BulkModeration({ jobs }: { jobs: Job[] }) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const allSelected = jobs.length > 0 && selected.length === jobs.length;
+  const count = selected.length;
+  const options = useMemo(() => jobs.map((job) => ({ ...job, title: job.title || 'Без названия' })), [jobs]);
+  const toggleAll = () => setSelected(allSelected ? [] : options.map((job) => job.id));
+  const toggle = (id: string) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+
+  return <ActionForm action={bulkModerateJobs} label={count ? `Применить к выбранным (${count})` : 'Выберите объявления'} disabled={!count}>
+    <div className="panel" style={{ margin: '16px 0', display: 'grid', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <strong>Массовая модерация</strong>
+        <button type="button" className="button" onClick={toggleAll}>{allSelected ? 'Снять выбор' : `Выбрать все (${jobs.length})`}</button>
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {options.map((job) => <label key={job.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <input type="checkbox" name="ids" value={job.id} checked={selected.includes(job.id)} onChange={() => toggle(job.id)} />
+          <span>{job.title}</span>
+        </label>)}
+      </div>
       <label>Решение<select name="status" defaultValue="published"><option value="published">Опубликовать</option><option value="rejected">Отклонить</option><option value="archived">Архивировать</option><option value="draft">Вернуть в черновик</option></select></label>
-      <label>Причина<textarea name="reason" maxLength={1000} placeholder="Причина для отклонения/возврата (необязательно)" /></label>
+      <label>Причина<textarea name="reason" maxLength={1000} placeholder="Что нужно исправить или почему принято решение" /></label>
+      <p className="small muted">Публикация отправит объявления в каталог. Перед публикацией проверьте оплату, адрес и контакты.</p>
     </div>
   </ActionForm>;
 }
