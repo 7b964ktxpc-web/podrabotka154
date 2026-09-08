@@ -37,6 +37,12 @@ test('извлекаем адрес из обычной строки Telegram', 
     assert.equal(j.contact_phone, '89231305754');
 });
 
+test('не принимаем служебное «ПЕР БЛИЖАЙШЕЕ» за адрес', async () => {
+    const j = await parser.parse('Требуется 1 чел\nПЕР БЛИЖАЙШЕЕ\n89231305754');
+    assert.equal(j.address, null);
+    assert.equal(j.contact_phone, '89231305754');
+});
+
 test('извлекаем дату и время из объявления', async () => {
     const j = await parser.parse('Нужен грузчик\nДата: 09.09.2026 08:00\nСпортивная 21/1\n3000 руб');
     assert.equal(j.date_start, '2026-09-09');
