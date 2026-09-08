@@ -102,6 +102,23 @@ function extractDateTime(text: string): Pick<ParsedJob, 'date_start' | 'date_end
     return { date_start, date_end: null, time_start, time_end };
 }
 
+function extractPaymentType(text: string): string | null {
+    const normalized = text.toLocaleLowerCase('ru').replace(/ё/g, 'е');
+    if (/(?:наличн(?:ыми|ые)|наличк(?:ой|а)|за наличн|налом)\b/iu.test(normalized)) return 'Наличными';
+    if (/(?:на карту|перевод(?:ом)?|безнал(?:ичный|ом)?|по карте|карта)\b/iu.test(normalized)) return 'На карту / перевод';
+    if (/(?:расчет|расчёт)\s+(?:после|по окончании)\s+(?:смены|работы)|по факту\s+(?:смены|работы)|оплата\s+после\s+смены/iu.test(normalized)) return 'После смены';
+    if (/(?:ежедневн(?:ая|о)|каждый день)\s+(?:оплата|расчет|расчёт)|оплата\s+ежедневно/iu.test(normalized)) return 'Ежедневно';
+    return null;
+}
+
+function extractEmploymentType(text: string): string | null {
+    const normalized = text.toLocaleLowerCase('ru').replace(/ё/g, 'е');
+    if (/(?:разов(?:ая|ый)|на\s+один\s+день|однодневн(?:ая|ый)|на\s+смену)/iu.test(normalized)) return 'Разовая работа';
+    if (/(?:постоянн(?:ая|ую)|на\s+постоянной|долгосрочн(?:ая|ую))/iu.test(normalized)) return 'Постоянная';
+    if (/(?:подработка|временн(?:ая|ый))/iu.test(normalized)) return 'Подработка';
+    return null;
+}
+
 function isGenericTitle(line: string): boolean {
     return /^(?:ещ[её]\s*\d+|на\s+ближайшее|срочно|подработка|вакансия)\s*[🔥🚨❗️💫⭐️⚡️]*$/iu.test(line)
         || /^(?:к|с|от|до)\s*\d{1,2}:\d{2}$/iu.test(line)
@@ -133,6 +150,8 @@ export class ConservativeParser implements JobParser {
         const lines = cleanText.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
         result.title = extractTitle(lines);
         Object.assign(result, parseSalary(cleanText), extractDateTime(cleanText));
+        result.payment_type = extractPaymentType(cleanText);
+        result.employment_type = extractEmploymentType(cleanText);
         result.contact_telegram = cleanText.match(/(?:https?:\/\/t\.me\/|(?<![\w.%+-])@)([A-Za-z][A-Za-z0-9_]{4,31})\b/)?.[1] ?? null;
         result.contact_phone = cleanText.match(/(?:\+7|8)[ (\-]*\d{3}[ )\-]*\d{3}[ \-]*\d{2}[ \-]*\d{2}(?!\d)/)?.[0] ?? null;
         result.contact_email = cleanText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
