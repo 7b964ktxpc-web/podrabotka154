@@ -58,3 +58,17 @@ test('понимаем время "К 13:00" как начало смены', as
     assert.equal(j.time_start, '13:00');
     assert.equal(j.time_end, null);
 });
+
+test('не принимаем служебное "еще 1" за адрес и заголовок', async () => {
+    const j = await parser.parse('еще 1\n\nК 13:00\nдва грузчика\nРодниковая 2/3,(16 коробок 214кг)\n350\\2\n@GruZZexpert544');
+    assert.equal(j.address, 'Родниковая 2/3');
+    assert.equal(j.title, 'два грузчика');
+    assert.equal(j.time_start, '13:00');
+});
+
+test('не принимаем "еще 2" за адрес', async () => {
+    const j = await parser.parse('еще 2\n12:30\nтэц -6(остановка)\n4 грузчика\nвыгрузить два десятитонника\n@GruZZexpert544');
+    assert.equal(j.address, null);
+    assert.equal(j.title, '4 грузчика');
+    assert.equal(j.time_start, '12:30');
+});
