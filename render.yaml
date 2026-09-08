@@ -3,7 +3,7 @@ services:
     name: podrabotka154
     runtime: node
     branch: main
-    buildCommand: npm ci && npm run build
+    buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /
     envVars:
