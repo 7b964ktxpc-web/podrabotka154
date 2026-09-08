@@ -29,12 +29,14 @@ export function localDay(now = new Date(), offset = 0, timezone = 'Asia/Novosibi
     const p = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now), v = (t: string) => p.find(x => x.type === t)!.value;
     const d = new Date(`${v('year')}-${v('month')}-${v('day')}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + offset); return d.toISOString().slice(0, 10);
 }
-export type SearchFilters = { q: string; where: string; category: string; min: number | null; day: string | null; instant: boolean; employer: boolean; address: boolean; page: number; };
+export type SearchFilters = { q: string; where: string; category: string; min: number | null; day: string | null; instant: boolean; employer: boolean; address: boolean; payment: string; employment: string; page: number; };
 export function readFilters(p: Record<string, string | string[] | undefined>, timezone?: string): SearchFilters {
     const s = (k: string) => typeof p[k] === 'string' ? p[k].slice(0, 200) : '';
     const min = Number(s('min')), d = s('day');
     const valid = /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d)) && new Date(d).toISOString().slice(0, 10) === d;
-    return { q: s('q').trim(), where: s('where').trim(), category: s('category'), min: s('min') && Number.isFinite(min) && min >= 0 ? min : null, day: d === 'today' ? localDay(undefined, 0, timezone) : d === 'tomorrow' ? localDay(undefined, 1, timezone) : valid ? d : null, instant: s('instant') === '1', employer: s('employer') === '1', address: s('address') === '1', page: Math.max(1, Math.min(1000, Math.floor(Number(s('page')) || 1))) };
+    const payment = ['immediate', 'daily', 'weekly', 'monthly', 'other'].includes(s('payment')) ? s('payment') : '';
+    const employment = ['Подработка', 'Разовая работа', 'Постоянная'].includes(s('employment')) ? s('employment') : '';
+    return { q: s('q').trim(), where: s('where').trim(), category: s('category'), min: s('min') && Number.isFinite(min) && min >= 0 ? min : null, day: d === 'today' ? localDay(undefined, 0, timezone) : d === 'tomorrow' ? localDay(undefined, 1, timezone) : valid ? d : null, instant: s('instant') === '1', employer: s('employer') === '1', address: s('address') === '1', payment, employment, page: Math.max(1, Math.min(1000, Math.floor(Number(s('page')) || 1))) };
 }
 export function salaryLabel(j: { salary_min: number | null; salary_max: number | null; salary_type: string | null; }): string {
     if (j.salary_min === null && j.salary_max === null) return 'Оплата не указана';
