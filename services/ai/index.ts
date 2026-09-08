@@ -85,7 +85,7 @@ export class ConservativeParser implements JobParser {
     async parse(text: string): Promise<ParsedJob> {
         const result: ParsedJob = { is_job: false, title: null, description: null, category: null, salary_min: null, salary_max: null, salary_type: null, city: null, address: null, date_start: null, date_end: null, time_start: null, time_end: null, employment_type: null, payment_type: null, contact_phone: null, contact_telegram: null, contact_email: null, confidence: 0 };
         const cleanText = text.trim();
-        if (!/(?:требу[ею]тся|ваканси[яи]|ищем\s|нужен\s|нужны\s|подработка|грузчик[аи]?|\d+\s*(?:человек|чел\.|грузчик[аи]?))|(?:\d+\s*(?:человек|чел\.|грузчик[аи]?)\b[\s\S]{0,220}\b(?:нужн|работ|разгруз|перевез|погруз|сбор|уборк|помощ|треб)))/iu.test(cleanText) || cleanText.length < 10) return result;
+        if (!/(?:требу[ею]тся|ваканси[яи]|ищем\s|нужен\s|нужны\s|подработка|грузчик[аи]?|\d+\s*(?:человек|чел\.|грузчик[аи]?))|(?:\d+\s*(?:человек|чел\.|грузчик[аи]?)\b[\s\S]{0,220}\b(?:нужн|работ|разгруз|перевез|погруз|сбор|уборк|помощ|треб))/iu.test(cleanText) || cleanText.length < 10) return result;
         result.is_job = true; result.description = cleanText;
         const lines = cleanText.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
         result.title = extractTitle(lines);
