@@ -72,7 +72,14 @@ export class PublicChannelAdapter implements TelegramSourceAdapter {
 export class BotApiAdapter implements TelegramSourceAdapter {
     private offset = 0;
     private connected = false;
-    constructor(private token: string, private username: string, private chatId: number) { }
+    private token: string;
+    private username: string;
+    private chatId: number;
+    constructor(token: string, username: string, chatId: number) {
+        this.token = token;
+        this.username = username;
+        this.chatId = chatId;
+    }
     private async api(method: string, body: unknown) { const r = await fetch(`https://api.telegram.org/bot${this.token}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(35000) }); const data = await r.json(); if (!r.ok || !data.ok) throw new Error('Telegram не принял запрос'); return data.result; }
     async connect() { await this.api('getMe', {}); this.connected = true; }
     async disconnect() { this.connected = false; }
