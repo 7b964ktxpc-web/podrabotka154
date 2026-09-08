@@ -73,3 +73,32 @@ test('не принимаем "еще 2" за адрес', async () => {
     assert.equal(j.title, '4 грузчика');
     assert.equal(j.time_start, '12:30');
 });
+
+test('понимаем способы оплаты и тип занятости', async () => {
+    const cases = [
+        ['Нужен грузчик\n3000 руб\nРасчет после смены', 'immediate', null],
+        ['Нужен помощник\n3500 за смену\nОплата еженедельно\nПодработка', 'weekly', 'Подработка'],
+        ['Требуется грузчик\n4500 руб\nОплата на карту\nРазовая работа', 'immediate', 'Разовая работа'],
+        ['Нужен водитель\nОплата ежемесячно\nПостоянная', 'monthly', 'Постоянная'],
+    ] as const;
+    for (const [text, payment, employment] of cases) {
+        const j = await parser.parse(text);
+        assert.equal(j.payment_type, payment);
+        assert.equal(j.employment_type, employment);
+    }
+});
+
+test('понимаем время внутри строки объявления и не путаем его с концом смены', async () => {
+    const j = await parser.parse('На 14.00 нужен 1 чел. в помощь\nБольшая 582\n400 руб/час');
+    assert.equal(j.time_start, '14:00');
+    assert.equal(j.time_end, null);
+    assert.equal(j.address, 'Большая 582');
+});
+
+test('адрес и оплата могут находиться в одной строке', async () => {
+    const j = await parser.parse('Требуется один человек\nБольшая 582 Оплата 400 руб/час после смены\n79513870400');
+    assert.equal(j.address, 'Большая 582');
+    assert.equal(j.salary_min, 400);
+    assert.equal(j.payment_type, 'immediate');
+    assert.equal(j.contact_phone, '79513870400');
+});
