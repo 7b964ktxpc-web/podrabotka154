@@ -2,8 +2,17 @@ function read(key: string): string | undefined {
   return process.env[key]?.trim() || undefined;
 }
 
+const FALLBACK_SUPABASE_URL = 'https://rweitwvwdnjxwovmvnwm.supabase.co';
+const FALLBACK_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Rj2Ecn9ocMi66CChSrK0CQ_iXxc7wO5';
+
 export function env(key: string): string {
-  const value = read(key) || (key === 'SUPABASE_URL' ? read('NEXT_PUBLIC_SUPABASE_URL') : undefined) || (key === 'SUPABASE_ANON_KEY' ? read('NEXT_PUBLIC_SUPABASE_ANON_KEY') : undefined);
+  const value =
+    read(key) ||
+    (key === 'SUPABASE_URL' ? read('NEXT_PUBLIC_SUPABASE_URL') || FALLBACK_SUPABASE_URL : undefined) ||
+    (key === 'SUPABASE_ANON_KEY'
+      ? read('NEXT_PUBLIC_SUPABASE_ANON_KEY') || FALLBACK_SUPABASE_PUBLISHABLE_KEY
+      : undefined);
+
   if (!value) throw new Error(`Не настроена переменная ${key}`);
   return value;
 }
@@ -19,10 +28,7 @@ export function appUrl() {
 }
 
 export function configured() {
-  return Boolean(
-    (read('SUPABASE_URL') || read('NEXT_PUBLIC_SUPABASE_URL')) &&
-    (read('SUPABASE_ANON_KEY') || read('NEXT_PUBLIC_SUPABASE_ANON_KEY')),
-  );
+  return true;
 }
 
 export function assertRealData() {
