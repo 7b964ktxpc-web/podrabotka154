@@ -38,6 +38,7 @@ test('понимаем адрес без номера из поста диспе
     const j = await parser.parse('срочно на ближайшее\n1 грузчика\nУлица широкая\nтранспортная компания.\nДо 20:00\n3000₽.\nНЕ ЗВОНИТЬ\nРасчет после смены\n8-952-923-47-50 Таня');
     assert.equal(j.is_job, true);
     assert.equal(j.address, 'Улица широкая');
+    assert.equal(j.time_start, null);
     assert.equal(j.time_end, '20:00');
     assert.equal(j.salary_min, 3000);
     assert.equal(j.contact_phone, '8-952-923-47-50');
