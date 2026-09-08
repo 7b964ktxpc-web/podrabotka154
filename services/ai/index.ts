@@ -20,16 +20,19 @@ export class HumanReviewModerator implements JobModerator {
 }
 
 const STREET_WORD = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?|станционная|сухарная|спортивная|комсомольская|большая|широкая|лежена)/iu;
+const STREET_WITH_NUMBER = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?|станционная|сухарная|спортивная|комсомольская|большая|широкая|лежена)\s+[А-Яа-яЁёA-Za-z0-9.-]{2,40}(?:\s+[А-Яа-яЁёA-Za-z0-9.-]{2,40})?\s*,?\s*\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
+const CITY_ADDRESS = /^[А-Яа-яЁёA-Za-z -]{3,40},?\s*\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?$/u;
 const DATE_TIME = /(?:дата\s*:\s*)?(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s+(\d{1,2}):(\d{2}))?/iu;
 
 function extractAddress(text: string): string | null {
     const explicit = text.match(/(?:^|\n)\s*(?:адрес|место)\s*:\s*([^\n]+)/iu)?.[1]?.trim();
     if (explicit && /\d/.test(explicit)) return explicit.slice(0, 140);
 
-    for (const line of text.split(/\r?\n/).map(x => x.trim()).filter(Boolean)) {
-        if (line.length > 140 || /(?:₽|руб\.?|карта|тел\.?|телефон|контакт|@\w+)/iu.test(line)) continue;
-        if (STREET_WORD.test(line) && /\d/.test(line)) return line.replace(/^[•*-]\s*/, '').slice(0, 140);
-        if (/^[А-Яа-яЁё\s.-]{3,35},?\s*\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?$/u.test(line)) return line.slice(0, 140);
+    for (const rawLine of text.split(/\r?\n/).map(x => x.trim()).filter(Boolean)) {
+        if (rawLine.length > 240 || /(?:₽|руб\.?|карта|тел\.?|телефон|контакт|@\w+)/iu.test(rawLine)) continue;
+        const inline = rawLine.match(STREET_WITH_NUMBER)?.[0]?.trim();
+        if (inline) return inline.replace(/^[•*-]\s*/, '').slice(0, 140);
+        if (CITY_ADDRESS.test(rawLine)) return rawLine.slice(0, 140);
     }
     return null;
 }
