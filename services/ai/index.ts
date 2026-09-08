@@ -6,6 +6,7 @@ export interface JobModerator { review(job: ParsedJob): Promise<{ status: 'pendi
 export class HumanReviewModerator implements JobModerator { async review() { return { status: 'pending_moderation' as const, reason: 'Требуется решение администратора' }; } }
 
 const STREET_WITH_NUMBER = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?)\s+[А-Яа-яЁёA-Za-z0-9.-]{2,40}(?:\s+[А-Яа-яЁёA-Za-z0-9.-]{2,40})?\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
+const ORDINAL_STREET_WITH_NUMBER = /(?:^|[^А-Яа-яЁёA-Za-z])\d{1,2}-(?:я|й|е)\s+[А-ЯЁ][а-яё-]{3,39}\s+(?:ул\.?|улица|просп\.?|проспект)\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
 const NAMED_STREET_WITH_NUMBER = /(?:^|[^А-Яа-яЁёA-Za-z])([А-ЯЁ][а-яё-]{3,39}(?:ая|яя|ная|овая|евая|иевая|ивная|ская|цкая|овская|евская|инская|овский|евский|инский|ово|ево))\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/u;
 const STREET_NAME_WITH_TYPE = /(?:^|[^А-Яа-яЁёA-Za-z])([А-ЯЁ][а-яё-]{3,39}\s+(?:улица|ул\.))\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
 const STREET_WITHOUT_NUMBER = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?)\s+[А-Яа-яЁёA-Za-z-]{3,40}(?:\s+[А-Яа-яЁёA-Za-z-]{2,40})?/iu;
@@ -21,6 +22,7 @@ function extractAddress(text: string): string | null {
     const explicit = text.match(/(?:^|\n)\s*(?:адрес|место|локация)\s*:\s*([^\n]+)/iu)?.[1];
     if (explicit && /\d/.test(explicit)) return cleanCandidate(explicit);
     for (const rawLine of text.split(/\r?\n/).map(x => x.trim()).filter(Boolean)) {
+        const ordinalWithNumber = rawLine.match(ORDINAL_STREET_WITH_NUMBER)?.[0]; if (ordinalWithNumber) return cleanCandidate(ordinalWithNumber);
         const prefixedWithNumber = rawLine.match(STREET_WITH_NUMBER)?.[0]; if (prefixedWithNumber) return cleanCandidate(prefixedWithNumber);
         const namedWithType = rawLine.match(STREET_NAME_WITH_TYPE)?.[0]; if (namedWithType) return cleanCandidate(namedWithType);
         const namedWithNumber = rawLine.match(NAMED_STREET_WITH_NUMBER)?.[0]; if (namedWithNumber) return cleanCandidate(namedWithNumber);
@@ -83,7 +85,7 @@ export class ConservativeParser implements JobParser {
     async parse(text: string): Promise<ParsedJob> {
         const result: ParsedJob = { is_job: false, title: null, description: null, category: null, salary_min: null, salary_max: null, salary_type: null, city: null, address: null, date_start: null, date_end: null, time_start: null, time_end: null, employment_type: null, payment_type: null, contact_phone: null, contact_telegram: null, contact_email: null, confidence: 0 };
         const cleanText = text.trim();
-        if (!/(?:требу[ею]тся|ваканси[яи]|ищем\s|нужен\s|нужны\s|подработка|грузчик[аи]?)/iu.test(cleanText) || cleanText.length < 10) return result;
+        if (!/(?:требу[ею]тся|ваканси[яи]|ищем\s|нужен\s|нужны\s|подработка|грузчик[аи]?|\d+\s*(?:человек|чел\.|грузчик[аи]?))|(?:\d+\s*(?:человек|чел\.|грузчик[аи]?)\b[\s\S]{0,220}\b(?:нужн|работ|разгруз|перевез|погруз|сбор|уборк|помощ|треб)))/iu.test(cleanText) || cleanText.length < 10) return result;
         result.is_job = true; result.description = cleanText;
         const lines = cleanText.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
         result.title = extractTitle(lines);
