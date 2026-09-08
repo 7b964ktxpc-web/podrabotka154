@@ -13,7 +13,7 @@ const CITY_ADDRESS = /^(?:[А-Яа-яЁёA-Za-z -]{3,40},\s*\d{1,4}[А-Яа-яA-
 const DATE_TIME = /(?:дата\s*:\s*)?(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s+(\d{1,2})[:.](\d{2}))?/iu;
 const TIME = /\b(\d{1,2})[:.](\d{2})\b/u;
 const ROLE_WORDS = /(?:требуется|нужен|нужна|нужны|ищем|грузчик[аи]?|курьер|водитель|помощник|работник|человек|чел\.)/iu;
-const GENERIC_ADDRESS_WORDS = /\b(?:ближайшее|ближайший|срочно|подработка|работа|смена|сегодня|завтра)\b/iu;
+const GENERIC_ADDRESS_WORDS = /(?:ближайшее|ближайший|срочно|подработка|работа|смена|сегодня|завтра)/iu;
 
 function cleanCandidate(value: string): string { return value.replace(/^[\s•*—–-]+|[\s.,;:]+$/g, '').replace(/\s+/g, ' ').trim().slice(0, 140); }
 function isNoiseLine(line: string): boolean { return line.length > 240 || /^(?:телефон|контакт|звонить|писать|whatsapp|ватсап|@\w+|[+]?\d[\d ()+-]{7,})$/iu.test(line); }
