@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { check, serviceDb } from '@/lib/service-db';
@@ -72,13 +73,16 @@ export async function saveTelegramSource(_: ActionState, form: FormData): Promis
         if (raw.adapter === 'public_web' && form.get('active') === 'on') {
             try {
                 const result = await importLatest(id, username);
+                revalidatePath('/admin/telegram');
                 return { ok: `Источник сохранён. Канал доступен: получено ${result.fetched}, новых сообщений ${result.inserted}. Они поставлены в очередь на парсинг.` };
             } catch (e) {
                 const error = friendly(e);
                 await db.from('telegram_sources').update({ last_error: error }).eq('id', id);
+                revalidatePath('/admin/telegram');
                 return { ok: `Источник сохранён, но проверить канал сейчас не удалось: ${error}` };
             }
         }
+        revalidatePath('/admin/telegram');
         return { ok: 'Источник сохранён.' };
     } catch (e) {
         return { error: friendly(e) };
@@ -92,8 +96,9 @@ export async function testTelegramSource(_: ActionState, form: FormData): Promis
         const adapter = z.enum(['manual', 'bot', 'public_web']).parse(form.get('adapter'));
         if (adapter !== 'public_web') return { error: 'Для бесплатной проверки выберите «Публичная страница Telegram».' };
         const username = normalizeUsername(String(form.get('username') || ''));
-        const sourceId = form.get('id') ? z.string().uuid().parse(form.get('id')) : crypto.randomUUID();
+        const sourceId = z.string().uuid().parse(form.get('id'));
         const result = await importLatest(sourceId, username);
+        revalidatePath('/admin/telegram');
         return { ok: `Канал доступен: найдено ${result.fetched} сообщений, новых сохранено ${result.inserted}.` };
     } catch (e) {
         return { error: friendly(e) };
