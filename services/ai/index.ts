@@ -1,36 +1,77 @@
 import { parseSalary, type ParsedJob } from '../../lib/domain.ts';
+
 export interface AIProvider {
     extract(text: string): Promise<ParsedJob>;
 }
+
 export interface JobParser {
     parse(text: string): Promise<ParsedJob>;
 }
+
 export interface JobModerator {
     review(job: ParsedJob): Promise<{
         status: 'pending_moderation';
         reason: string;
     }>;
 }
+
 export class HumanReviewModerator implements JobModerator {
     async review() { return { status: 'pending_moderation' as const, reason: 'Требуется решение администратора' }; }
 }
+
+const ADDRESS_LINE = /(?:^|\n)\s*(?:(?:адрес|место)\s*:\s*)?([^\n]{3,140}(?:\d{1,4}[А-Яа-яA-Za-z]?|№\s*\d+)(?:\s|$|[,./-]))/iu;
+const STREET_WORD = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?|станционная|сухарная|спортивная|комсомольская|большая|широкая|лежена|станционная)/iu;
+const DATE_TIME = /(?:дата\s*:\s*)?(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s+(\d{1,2}):(\d{2}))?/iu;
+
+function extractAddress(text: string): string | null {
+    const explicit = text.match(/(?:^|\n)\s*(?:адрес|место)\s*:\s*([^\n]+)/iu)?.[1]?.trim();
+    if (explicit) return explicit.slice(0, 140);
+
+    for (const line of text.split(/\r?\n/).map(x => x.trim()).filter(Boolean)) {
+        if (line.length > 140 || /(?:₽|руб\.?|карта|тел\.?|телефон|контакт|@\w+)/iu.test(line)) continue;
+        if (STREET_WORD.test(line) && /\d/.test(line)) return line.replace(/^[•*-]\s*/, '').slice(0, 140);
+        if (/^[А-Яа-яЁё\s.-]{3,35},?\s*\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?$/u.test(line)) return line.slice(0, 140);
+    }
+    return ADDRESS_LINE.test(text) ? text.match(ADDRESS_LINE)?.[1]?.trim().slice(0, 140) ?? null : null;
+}
+
+function extractDateTime(text: string): Pick<ParsedJob, 'date_start' | 'date_end' | 'time_start' | 'time_end'> {
+    const m = text.match(DATE_TIME);
+    if (!m) return { date_start: null, date_end: null, time_start: null, time_end: null };
+    const day = m[1].padStart(2, '0');
+    const month = m[2].padStart(2, '0');
+    const date = `${m[3]}-${month}-${day}`;
+    const time = m[4] && m[5] ? `${m[4].padStart(2, '0')}:${m[5]}` : null;
+    return { date_start: date, date_end: null, time_start: time, time_end: null };
+}
+
 export class ConservativeParser implements JobParser {
     async parse(text: string): Promise<ParsedJob> {
-        const result: ParsedJob = { is_job: false, title: null, description: null, category: null, salary_min: null, salary_max: null, salary_type: null, city: null, address: null, date_start: null, date_end: null, time_start: null, time_end: null, employment_type: null, payment_type: null, contact_phone: null, contact_telegram: null, contact_email: null, confidence: 0 };
-        if (!/(?:требу[ею]тся|ваканси[яи]|ищем\s|нужен\s|нужны\s|подработка)/iu.test(text) || text.trim().length < 10)
+        const result: ParsedJob = {
+            is_job: false, title: null, description: null, category: null,
+            salary_min: null, salary_max: null, salary_type: null, city: null,
+            address: null, date_start: null, date_end: null, time_start: null, time_end: null,
+            employment_type: null, payment_type: null, contact_phone: null,
+            contact_telegram: null, contact_email: null, confidence: 0,
+        };
+        const cleanText = text.trim();
+        if (!/(?:требу[ею]тся|ваканси[яи]|ищем\s|нужен\s|нужны\s|подработка|грузчик[аи]?)/iu.test(cleanText) || cleanText.length < 10)
             return result;
+
         result.is_job = true;
-        result.title = text.trim().split('\n').find(x => x.trim())!.slice(0, 200);
-        result.description = text.trim();
-        Object.assign(result, parseSalary(text));
-        result.contact_telegram = text.match(/(?:https:\/\/t\.me\/|(?<![\w.%+-])@)([A-Za-z][A-Za-z0-9_]{4,31})\b/)?.[1] ?? null;
-        result.contact_phone = text.match(/(?:\+7|8)[ (\-]*\d{3}[ )\-]*\d{3}[ \-]*\d{2}[ \-]*\d{2}(?!\d)/)?.[0] ?? null;
-        result.contact_email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
-        result.address = text.match(/(?:^|\n)\s*адрес\s*:\s*([^\n]+)/iu)?.[1]?.trim() ?? null;
+        result.description = cleanText;
+        const lines = cleanText.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+        result.title = lines.find(x => !/^(?:адрес|место|дата|оплата|контакт|телефон)\s*:/iu.test(x) && !/(?:₽|руб\.?|\+7|8\d{2})/iu.test(x))?.slice(0, 200) ?? lines[0]?.slice(0, 200) ?? null;
+        Object.assign(result, parseSalary(cleanText), extractDateTime(cleanText));
+        result.contact_telegram = cleanText.match(/(?:https?:\/\/t\.me\/|(?<![\w.%+-])@)([A-Za-z][A-Za-z0-9_]{4,31})\b/)?.[1] ?? null;
+        result.contact_phone = cleanText.match(/(?:\+7|8)[ (\-]*\d{3}[ )\-]*\d{3}[ \-]*\d{2}[ \-]*\d{2}(?!\d)/)?.[0] ?? null;
+        result.contact_email = cleanText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
+        result.address = extractAddress(cleanText);
         result.confidence = 0.35;
         return result;
     }
 }
+
 export class ProviderJobParser implements JobParser {
     private provider: AIProvider;
     constructor(provider: AIProvider) { this.provider = provider; }
