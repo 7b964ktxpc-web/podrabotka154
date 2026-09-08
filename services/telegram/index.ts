@@ -32,7 +32,12 @@ function decodeHtml(value: string): string {
 /** Reads only the public Telegram web page; it does not bypass access controls. */
 export class PublicChannelAdapter implements TelegramSourceAdapter {
     private connected = false;
-    constructor(private username: string, private limit = 20) { }
+    private username: string;
+    private limit: number;
+    constructor(username: string, limit = 20) {
+        this.username = username;
+        this.limit = limit;
+    }
     async connect() {
         if (!/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(this.username)) throw new Error('Некорректный username Telegram');
         this.connected = true;
