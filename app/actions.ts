@@ -12,197 +12,23 @@ import { readFilters } from '@/lib/domain';
 import { rate } from '@/lib/rate';
 import { appUrl } from '@/lib/env';
 import { uploadImage } from '@/lib/upload';
-export type ActionState = {
-    error?: string;
-    ok?: string;
-};
-export async function loginAction(_: ActionState, form: FormData): Promise<ActionState> {
-    try {
-        const p = credentials.parse(Object.fromEntries(form));
-        await rate('auth-email:' + createHash('sha256').update(p.email.toLowerCase()).digest('hex'), 8, 300);
-        const client = await db();
-        if (form.get('mode') === 'signup') {
-            const { error } = await client.auth.signUp({ ...p, options: { emailRedirectTo: appUrl() + '/auth/callback' } });
-            if (error)
-                return { error: 'Регистрация не удалась. Проверьте email и настройки почты.' };
-            return { ok: 'Проверьте почту для подтверждения регистрации. Если аккаунт уже есть, войдите.' };
-        }
-        const { error } = await client.auth.signInWithPassword(p);
-        if (error)
-            return { error: 'Не удалось войти. Проверьте email, пароль и подтверждение почты.' };
-    }
-    catch (e) {
-        return { error: friendly(e) };
-    }
-    redirect('/profile');
-}
-export async function resetPassword(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const email = z.string().email().parse(form.get('email'));
-    await rate('reset:' + createHash('sha256').update(email).digest('hex'), 3, 600);
-    const c = await db();
-    check(await c.auth.resetPasswordForEmail(email, { redirectTo: appUrl() + '/auth/callback?next=/profile/password' }));
-    return { ok: 'Если адрес зарегистрирован, письмо для восстановления отправлено.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
-export async function changePassword(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { client } = await requireUser();
-    const password = z.string().min(10).max(128).parse(form.get('password'));
-    check(await client.auth.updateUser({ password }));
-    return { ok: 'Пароль изменён.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
+import { PublicChannelAdapter } from '@/services/telegram';
+export type ActionState = { error?: string; ok?: string };
+export async function loginAction(_: ActionState, form: FormData): Promise<ActionState> { try { const p = credentials.parse(Object.fromEntries(form)); await rate('auth-email:' + createHash('sha256').update(p.email.toLowerCase()).digest('hex'), 8, 300); const client = await db(); if (form.get('mode') === 'signup') { const { error } = await client.auth.signUp({ ...p, options: { emailRedirectTo: appUrl() + '/auth/callback' } }); if (error) return { error: 'Регистрация не удалась. Проверьте email и настройки почты.' }; return { ok: 'Проверьте почту для подтверждения регистрации. Если аккаунт уже есть, войдите.' }; } const { error } = await client.auth.signInWithPassword(p); if (error) return { error: 'Не удалось войти. Проверьте email, пароль и подтверждение почты.' }; } catch (e) { return { error: friendly(e) }; } redirect('/profile'); }
+export async function resetPassword(_: ActionState, form: FormData): Promise<ActionState> { try { const email = z.string().email().parse(form.get('email')); await rate('reset:' + createHash('sha256').update(email).digest('hex'), 3, 600); const c = await db(); check(await c.auth.resetPasswordForEmail(email, { redirectTo: appUrl() + '/auth/callback?next=/profile/password' })); return { ok: 'Если адрес зарегистрирован, письмо для восстановления отправлено.' }; } catch (e) { return { error: friendly(e) }; } }
+export async function changePassword(_: ActionState, form: FormData): Promise<ActionState> { try { const { client } = await requireUser(); const password = z.string().min(10).max(128).parse(form.get('password')); check(await client.auth.updateUser({ password })); return { ok: 'Пароль изменён.' }; } catch (e) { return { error: friendly(e) }; } }
 export async function logout() { const client = await db(); await client.auth.signOut(); redirect('/'); }
-export async function saveEmployer(_: ActionState, form: FormData): Promise<ActionState> { let slug = ''; try {
-    const { client, user } = await requireUser();
-    await rate('employer:' + user.id);
-    const raw = Object.fromEntries(form);
-    const logo = await uploadImage(form.get('logo'), user.id);
-    if (logo)
-        raw.logo_url = logo;
-    const p = employerSchema.parse(raw);
-    check(await client.rpc('save_employer', { p }));
-    slug = p.slug;
-}
-catch (e) {
-    return { error: friendly(e) };
-} revalidatePath('/employer'); redirect('/employers/' + slug); }
-export async function saveJob(_: ActionState, form: FormData): Promise<ActionState> { let id = ''; try {
-    const { client, user } = await requireUser();
-    await rate('job:' + user.id, 15);
-    const raw = Object.fromEntries(form);
-    const image = await uploadImage(form.get('photo'), user.id);
-    if (image)
-        raw.photo_url = image;
-    const p = jobSchema.parse(raw);
-    const p_id = form.get('id') ? z.string().uuid().parse(form.get('id')) : null;
-    const { data } = check(await client.rpc('save_job', { p, p_id }));
-    id = data;
-}
-catch (e) {
-    return { error: friendly(e) };
-} redirect('/jobs/' + id + '/preview'); }
-export async function submitJob(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { client, user } = await requireUser();
-    await rate('submit:' + user.id, 10);
-    check(await client.rpc('submit_job', { p_id: z.string().uuid().parse(form.get('id')) }));
-}
-catch (e) {
-    return { error: friendly(e) };
-} revalidatePath('/employer'); redirect('/employer?notice=submitted'); }
-export async function moderateJob(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { client } = await requireAdmin();
-    check(await client.rpc('moderate_job', { p_id: z.string().uuid().parse(form.get('id')), p_status: z.enum(['published', 'rejected', 'draft', 'archived']).parse(form.get('status')), p_reason: z.string().max(1000).parse(form.get('reason') || '') }));
-    revalidatePath('/admin/moderation');
-    revalidatePath('/jobs');
-    return { ok: 'Решение сохранено.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
-export async function saveSearch(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { client, user } = await requireUser();
-    await rate('search-save:' + user.id, 10);
-    const name = z.string().trim().min(1).max(100).parse(form.get('name'));
-    const raw = z.record(z.string()).parse(JSON.parse(String(form.get('filters') || '{}')));
-    const filters = readFilters(raw);
-    check(await client.from('saved_searches').insert({ user_id: user.id, name, filters, notify: form.get('notify') === 'on' }));
-    revalidatePath('/profile');
-    return { ok: 'Поиск сохранён. Управление уведомлениями в профиле.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
+export async function saveEmployer(_: ActionState, form: FormData): Promise<ActionState> { let slug = ''; try { const { client, user } = await requireUser(); await rate('employer:' + user.id); const raw = Object.fromEntries(form); const logo = await uploadImage(form.get('logo'), user.id); if (logo) raw.logo_url = logo; const p = employerSchema.parse(raw); check(await client.rpc('save_employer', { p })); slug = p.slug; } catch (e) { return { error: friendly(e) }; } revalidatePath('/employer'); redirect('/employers/' + slug); }
+export async function saveJob(_: ActionState, form: FormData): Promise<ActionState> { let id = ''; try { const { client, user } = await requireUser(); await rate('job:' + user.id, 15); const raw = Object.fromEntries(form); const image = await uploadImage(form.get('photo'), user.id); if (image) raw.photo_url = image; const p = jobSchema.parse(raw); const p_id = form.get('id') ? z.string().uuid().parse(form.get('id')) : null; const { data } = check(await client.rpc('save_job', { p, p_id })); id = data; } catch (e) { return { error: friendly(e) }; } redirect('/jobs/' + id + '/preview'); }
+export async function submitJob(_: ActionState, form: FormData): Promise<ActionState> { try { const { client, user } = await requireUser(); await rate('submit:' + user.id, 10); check(await client.rpc('submit_job', { p_id: z.string().uuid().parse(form.get('id')) })); } catch (e) { return { error: friendly(e) }; } revalidatePath('/employer'); redirect('/employer?notice=submitted'); }
+export async function moderateJob(_: ActionState, form: FormData): Promise<ActionState> { try { const { client } = await requireAdmin(); check(await client.rpc('moderate_job', { p_id: z.string().uuid().parse(form.get('id')), p_status: z.enum(['published', 'rejected', 'draft', 'archived']).parse(form.get('status')), p_reason: z.string().max(1000).parse(form.get('reason') || '') })); revalidatePath('/admin/moderation'); revalidatePath('/jobs'); return { ok: 'Решение сохранено.' }; } catch (e) { return { error: friendly(e) }; } }
+export async function saveSearch(_: ActionState, form: FormData): Promise<ActionState> { try { const { client, user } = await requireUser(); await rate('search-save:' + user.id, 10); const name = z.string().trim().min(1).max(100).parse(form.get('name')); const raw = z.record(z.string()).parse(JSON.parse(String(form.get('filters') || '{}'))); const filters = readFilters(raw); check(await client.from('saved_searches').insert({ user_id: user.id, name, filters, notify: form.get('notify') === 'on' })); revalidatePath('/profile'); return { ok: 'Поиск сохранён. Управление уведомлениями в профиле.' }; } catch (e) { return { error: friendly(e) }; } }
 export async function removeSearch(form: FormData) { const { client, user } = await requireUser(); check(await client.from('saved_searches').delete().eq('id', z.string().uuid().parse(form.get('id'))).eq('user_id', user.id)); revalidatePath('/profile'); }
-export async function saveName(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { user } = await requireUser();
-    check(await serviceDb().from('profiles').update({ display_name: z.string().trim().max(100).parse(form.get('display_name')) }).eq('id', user.id));
-    return { ok: 'Имя сохранено.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
-export async function createOrder(_: ActionState, form: FormData): Promise<ActionState> { let id = ''; try {
-    const { client, user } = await requireUser();
-    await rate('order:' + user.id, 10);
-    if (process.env.SANDBOX_PAYMENTS_ENABLED !== 'true')
-        return { error: 'Покупки отключены: платёжный провайдер ещё не подключён.' };
-    const { data } = check(await client.rpc('make_order', { p_product: z.string().uuid().parse(form.get('product_id')), p_job: form.get('job_id') ? z.string().uuid().parse(form.get('job_id')) : null, p_key: z.string().uuid().parse(form.get('idempotency_key')) }));
-    id = data;
-}
-catch (e) {
-    return { error: friendly(e) };
-} redirect('/orders/' + id); }
-export async function saveProduct(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { user } = await requireAdmin();
-    const p = productSchema.parse({ ...Object.fromEntries(form), active: form.get('active') === 'on' });
-    const { id, ...data } = p;
-    const c = serviceDb();
-    check(await c.from('products').update(data).eq('id', id));
-    check(await c.from('admin_logs').insert({ actor_id: user.id, action: 'product_update', target_id: id, details: data }));
-    revalidatePath('/admin/monetization');
-    return { ok: 'Продукт обновлён.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
-export async function saveSource(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { user } = await requireAdmin();
-    const p = z.object({ name: z.string().min(2).max(160), username: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{4,31}$/), city_id: z.string().uuid(), adapter: z.enum(['manual', 'bot']), chat_id: z.string().regex(/^-?\d+$/).or(z.literal('')).transform(v => v || null) }).parse(Object.fromEntries(form));
-    const c = serviceDb();
-    const id = form.get('id') ? z.string().uuid().parse(form.get('id')) : crypto.randomUUID();
-    check(await c.from('telegram_sources').upsert({ id, ...p, active: form.get('active') === 'on' }));
-    check(await c.from('admin_logs').insert({ actor_id: user.id, action: 'source_update', target_id: id }));
-    revalidatePath('/admin/telegram');
-    return { ok: 'Источник сохранён.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
-export async function importMessage(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { user } = await requireAdmin();
-    await rate('import:' + user.id, 30);
-    const p = z.object({ source_id: z.string().uuid(), telegram_message_id: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER), message_text: z.string().min(1).max(20000), message_date: z.string().datetime() }).parse(Object.fromEntries(form));
-    const c = serviceDb();
-    const { data: s } = check(await c.from('telegram_sources').select('*').eq('id', p.source_id).eq('active', true).single());
-    check(await c.from('telegram_messages').upsert({ ...p, message_url: `https://t.me/${s.username}/${p.telegram_message_id}`, raw_payload: { ...p, imported_by: user.id } }, { onConflict: 'source_id,telegram_message_id', ignoreDuplicates: true }));
-    revalidatePath('/admin/telegram');
-    return { ok: 'Оригинал сохранён, обработка поставлена в очередь worker.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
-export async function saveReference(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { user } = await requireAdmin();
-    const table = z.enum(['cities', 'job_categories']).parse(form.get('table'));
-    const p = z.object({ name: z.string().min(2).max(120), slug: z.string().regex(/^[a-z0-9-]{2,80}$/) }).parse(Object.fromEntries(form));
-    const id = form.get('id') ? z.string().uuid().parse(form.get('id')) : crypto.randomUUID();
-    const data: Record<string, unknown> = { id, ...p, active: form.get('active') === 'on' };
-    if (table === 'cities') {
-        const tz = z.string().max(100).parse(form.get('timezone'));
-        new Intl.DateTimeFormat('ru', { timeZone: tz });
-        data.timezone = tz;
-    }
-    const c = serviceDb();
-    check(await c.from(table).upsert(data));
-    check(await c.from('admin_logs').insert({ actor_id: user.id, action: table + '_update', target_id: id }));
-    revalidatePath('/admin/settings');
-    return { ok: 'Сохранено.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
-export async function saveLimits(_: ActionState, form: FormData): Promise<ActionState> { try {
-    const { user } = await requireAdmin();
-    const value = z.object({ days: z.coerce.number().int().min(1).max(365), free_active_limit: z.coerce.number().int().min(0).max(100) }).parse(Object.fromEntries(form));
-    const c = serviceDb();
-    check(await c.from('settings').update({ value }).eq('key', 'publication'));
-    check(await c.from('admin_logs').insert({ actor_id: user.id, action: 'publication_settings', details: value }));
-    return { ok: 'Лимиты сохранены.' };
-}
-catch (e) {
-    return { error: friendly(e) };
-} }
+export async function saveName(_: ActionState, form: FormData): Promise<ActionState> { try { const { user } = await requireUser(); check(await serviceDb().from('profiles').update({ display_name: z.string().trim().max(100).parse(form.get('display_name')) }).eq('id', user.id)); return { ok: 'Имя сохранено.' }; } catch (e) { return { error: friendly(e) }; } }
+export async function createOrder(_: ActionState, form: FormData): Promise<ActionState> { let id = ''; try { const { client, user } = await requireUser(); await rate('order:' + user.id, 10); if (process.env.SANDBOX_PAYMENTS_ENABLED !== 'true') return { error: 'Покупки отключены: платёжный провайдер ещё не подключён.' }; const { data } = check(await client.rpc('make_order', { p_product: z.string().uuid().parse(form.get('product_id')), p_job: form.get('job_id') ? z.string().uuid().parse(form.get('job_id')) : null, p_key: z.string().uuid().parse(form.get('idempotency_key')) })); id = data; } catch (e) { return { error: friendly(e) }; } redirect('/orders/' + id); }
+export async function saveProduct(_: ActionState, form: FormData): Promise<ActionState> { try { const { user } = await requireAdmin(); const p = productSchema.parse({ ...Object.fromEntries(form), active: form.get('active') === 'on' }); const { id, ...data } = p; const c = serviceDb(); check(await c.from('products').update(data).eq('id', id)); check(await c.from('admin_logs').insert({ actor_id: user.id, action: 'product_update', target_id: id, details: data })); revalidatePath('/admin/monetization'); return { ok: 'Продукт обновлён.' }; } catch (e) { return { error: friendly(e) }; } }
+export async function saveSource(_: ActionState, form: FormData): Promise<ActionState> { try { const { user } = await requireAdmin(); const p = z.object({ name: z.string().min(2).max(160), username: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{4,31}$/), city_id: z.string().uuid(), adapter: z.enum(['manual', 'bot', 'public_web']), chat_id: z.string().regex(/^-?\d+$/).or(z.literal('')).transform(v => v || null) }).parse(Object.fromEntries(form)); const c = serviceDb(); const id = form.get('id') ? z.string().uuid().parse(form.get('id')) : crypto.randomUUID(); check(await c.from('telegram_sources').upsert({ id, ...p, active: form.get('active') === 'on' })); check(await c.from('admin_logs').insert({ actor_id: user.id, action: 'source_update', target_id: id })); revalidatePath('/admin/telegram'); return { ok: 'Источник сохранён.' }; } catch (e) { return { error: friendly(e) }; } }
+export async function importPublicTelegram(_: ActionState, form: FormData): Promise<ActionState> { try { const { user } = await requireAdmin(); await rate('telegram-public:' + user.id, 6, 300); const sourceId = z.string().uuid().parse(form.get('source_id')); const c = serviceDb(); const { data: s } = check(await c.from('telegram_sources').select('*').eq('id', sourceId).eq('active', true).single()); if (s.adapter !== 'public_web') return { error: 'Для этого источника включите способ «Публичная страница Telegram».' }; const adapter = new PublicChannelAdapter(s.username, 20); await adapter.connect(); const messages = await adapter.fetchMessages(); let inserted = 0; for (const m of messages) { const { data } = await c.from('telegram_messages').upsert({ ...m, source_id: s.id }, { onConflict: 'source_id,telegram_message_id', ignoreDuplicates: true }).select('id'); if (data?.length) inserted += 1; } await adapter.disconnect(); check(await c.from('telegram_sources').update({ last_error: null }).eq('id', s.id)); check(await c.from('admin_logs').insert({ actor_id: user.id, action: 'telegram_public_import', target_id: s.id, details: { fetched: messages.length, inserted } })); revalidatePath('/admin/telegram'); revalidatePath('/admin/moderation'); return { ok: `Получено ${messages.length} сообщений, новых сохранено: ${inserted}. Они отправлены на обработку и модерацию.` }; } catch (e) { return { error: friendly(e) }; } }
+export async function importMessage(_: ActionState, form: FormData): Promise<ActionState> { try { const { user } = await requireAdmin(); await rate('import:' + user.id, 30); const p = z.object({ source_id: z.string().uuid(), telegram_message_id: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER), message_text: z.string().min(1).max(20000), message_date: z.string().datetime() }).parse(Object.fromEntries(form)); const c = serviceDb(); const { data: s } = check(await c.from('telegram_sources').select('*').eq('id', p.source_id).eq('active', true).single()); check(await c.from('telegram_messages').upsert({ ...p, message_url: `https://t.me/${s.username}/${p.telegram_message_id}`, raw_payload: { ...p, imported_by: user.id } }, { onConflict: 'source_id,telegram_message_id', ignoreDuplicates: true })); revalidatePath('/admin/telegram'); return { ok: 'Оригинал сохранён, обработка поставлена в очередь worker.' }; } catch (e) { return { error: friendly(e) }; } }
+export async function saveReference(_: ActionState, form: FormData): Promise<ActionState> { try { const { user } = await requireAdmin(); const table = z.enum(['cities', 'job_categories']).parse(form.get('table')); const p = z.object({ name: z.string().min(2).max(120), slug: z.string().regex(/^[a-z0-9-]{2,80}$/) }).parse(Object.fromEntries(form)); const id = form.get('id') ? z.string().uuid().parse(form.get('id')) : crypto.randomUUID(); const data: Record<string, unknown> = { id, ...p, active: form.get('active') === 'on' }; if (table === 'cities') { const tz = z.string().max(100).parse(form.get('timezone')); new Intl.DateTimeFormat('ru', { timeZone: tz }); data.timezone = tz; } const c = serviceDb(); check(await c.from(table).upsert(data)); check(await c.from('admin_logs').insert({ actor_id: user.id, action: table + '_update', target_id: id })); revalidatePath('/admin/settings'); return { ok: 'Сохранено.' }; } catch (e) { return { error: friendly(e) }; } }
+export async function saveLimits(_: ActionState, form: FormData): Promise<ActionState> { try { const { user } = await requireAdmin(); const value = z.object({ days: z.coerce.number().int().min(1).max(365), free_active_limit: z.coerce.number().int().min(0).max(100) }).parse(Object.fromEntries(form)); const c = serviceDb(); check(await c.from('settings').update({ value }).eq('key', 'publication')); check(await c.from('admin_logs').insert({ actor_id: user.id, action: 'publication_settings', details: value })); return { ok: 'Лимиты сохранены.' }; } catch (e) { return { error: friendly(e) }; } }
