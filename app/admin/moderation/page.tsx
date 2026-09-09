@@ -41,6 +41,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
                         <div><strong>Способ оплаты</strong><br />{paymentLabel(j.payment_type) || '—'}</div>
                         <div><strong>Занятость</strong><br />{employmentLabel(j.employment_type) || '—'}</div>
                         <div><strong>Адрес</strong><br />{value(j.address_raw)}</div>
+                        <div><strong>Карта</strong><br />{j.map_url ? <a className="button" href={j.map_url} target="_blank" rel="noopener noreferrer">Открыть карту ↗</a> : 'Ссылка не добавлена'}</div>
                         <div><strong>Дата</strong><br />{value(j.date_start)}</div>
                         <div><strong>Время</strong><br />{j.time_start || j.time_end ? `${j.time_start ? `с ${j.time_start}` : ''}${j.time_start && j.time_end ? ' ' : ''}${j.time_end ? `до ${j.time_end}` : ''}` : '—'}</div>
                         <div><strong>Телефон</strong><br />{value(j.contact_phone)}</div>
