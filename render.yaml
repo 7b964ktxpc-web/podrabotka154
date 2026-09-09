@@ -17,6 +17,8 @@ services:
         sync: false
       - key: CRON_SECRET
         generateValue: true
+      - key: YANDEX_GEOCODER_API_KEY
+        sync: false
 
   - type: cron
     name: podrabotka154-public-telegram-import
