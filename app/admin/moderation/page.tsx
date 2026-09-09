@@ -4,7 +4,7 @@ import { check } from '@/lib/service-db';
 import { ActionForm } from '@/components/action-form';
 import { BulkModeration } from '@/components/bulk-moderation';
 import { moderateJob } from '@/app/actions';
-import { employmentLabel, paymentLabel, salaryLabel } from '@/lib/domain';
+import { employmentLabel, isPriorityJobText, paymentLabel, priorityLabel, salaryLabel } from '@/lib/domain';
 
 function value(v: unknown) { return v === null || v === undefined || v === '' ? '—' : String(v); }
 
@@ -32,17 +32,19 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
             {jobs.map(j => {
                 const review = reviewState(j);
                 const title = j.title || 'Без названия';
+                const priority = priorityLabel(j.original_text || j.description || title);
                 return <details key={j.id} open>
-                    <summary>{title} · {j.status}</summary>
+                    <summary>{priority ? `${priority} · ` : ''}{title} · {j.status}</summary>
                     <p className="small muted">Работодатель: {j.employers?.name || 'Не указан'} · confidence: {review.confidence === null ? 'не применяется' : `${review.confidence}%`} · {new Date(j.created_at).toLocaleString('ru-RU')}</p>
                     {review.missing.length > 0 && <p className="message" role="status">⚠️ Перед публикацией проверьте: {review.missing.join(', ')}.</p>}
                     <div className="panel" style={{ margin: '12px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
+                        <div><strong>Приоритет</strong><br />{isPriorityJobText(j.original_text || j.description || title) ? '🔥 Да — ближайшее / срочное' : 'Обычное'}</div>
                         <div><strong>Оплата</strong><br />{salaryLabel(j)}</div>
                         <div><strong>Способ оплаты</strong><br />{paymentLabel(j.payment_type) || '—'}</div>
                         <div><strong>Занятость</strong><br />{employmentLabel(j.employment_type) || '—'}</div>
                         <div><strong>Адрес</strong><br />{value(j.address_raw)}</div>
                         <div><strong>Дата</strong><br />{value(j.date_start)}</div>
-                        <div><strong>Время</strong><br />{j.time_start || j.time_end ? `${j.time_start ? `с ${j.time_start}` : ''}${j.time_start && j.time_end ? ' ' : ''}${j.time_end ? `до ${j.time_end}` : ''}` : '—'}</div>
+                        <div><strong>Время</strong><br />{j.time_start || j.time_end ? `${j.time_start ? `с ${j.time_start}` : ''}${j.time_start && j.time_end ? ' ' : ''}${j.time_end ? `до ${j.time_end}` : ''}` : (priority ? 'Ближайшее' : '—')}</div>
                         <div><strong>Телефон</strong><br />{value(j.contact_phone)}</div>
                         <div><strong>Telegram</strong><br />{value(j.contact_telegram)}</div>
                     </div>
