@@ -1,13 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import type { Job } from '@/lib/types';
-
-const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import('react-leaflet').then(m => m.TileLayer), { ssr: false });
-const CircleMarker = dynamic(() => import('react-leaflet').then(m => m.CircleMarker), { ssr: false });
-const Popup = dynamic(() => import('react-leaflet').then(m => m.Popup), { ssr: false });
 
 export function JobsMap({ jobs }: { jobs: Job[] }) {
   // На карту попадают только точные координаты. Район, метро и ориентир
