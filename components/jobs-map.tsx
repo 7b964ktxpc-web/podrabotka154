@@ -10,7 +10,11 @@ const CircleMarker = dynamic(() => import('react-leaflet').then(m => m.CircleMar
 const Popup = dynamic(() => import('react-leaflet').then(m => m.Popup), { ssr: false });
 
 export function JobsMap({ jobs }: { jobs: Job[] }) {
-  const mapped = jobs.filter(j => Number.isFinite(j.latitude) && Number.isFinite(j.longitude));
+  // На карту попадают только точные координаты. Район, метро и ориентир
+  // остаются в списке вакансий и не превращаются в ложную точку.
+  const mapped = jobs.filter(
+    j => j.location_precision === 'exact' && Number.isFinite(j.latitude) && Number.isFinite(j.longitude),
+  );
   const center: [number, number] = mapped.length
     ? [Number(mapped[0].latitude), Number(mapped[0].longitude)]
     : [55.0302, 82.9204];
@@ -22,13 +26,13 @@ export function JobsMap({ jobs }: { jobs: Job[] }) {
           <span className="eyebrow">Карта</span>
           <h2>Подработка рядом</h2>
         </div>
-        <span className="count">{mapped.length} с координатами</span>
+        <span className="count">{mapped.length} точных точек</span>
       </div>
       <div className="jobs-map-frame">
         <MapContainer center={center} zoom={11} scrollWheelZoom className="leaflet-map">
           <TileLayer
             attribution='&copy; OpenStreetMap contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {mapped.map(job => (
             <CircleMarker
@@ -52,8 +56,8 @@ export function JobsMap({ jobs }: { jobs: Job[] }) {
         </MapContainer>
         {!mapped.length && (
           <div className="jobs-map-empty">
-            <strong>Пока нет вакансий с координатами</strong>
-            <span>Адреса без подтверждённых координат специально не ставим на карту.</span>
+            <strong>Точных координат пока нет</strong>
+            <span>Если в вакансии указан только район, метро или ориентир, она остаётся в списке без ложной точности на карте.</span>
           </div>
         )}
       </div>
