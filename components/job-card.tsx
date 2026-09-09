@@ -18,7 +18,7 @@ export function JobCard({ job, saved = false, preview = false }: { job: Job; sav
         <p className="salary">{salaryLabel(job)}</p>
         {(payment || employment) && <div className="meta">{payment && <span>💳 {payment}</span>}{employment && <span>🧰 {employment}</span>}</div>}
         <Address job={job}/>
-        <div className="meta"><span>📅 {job.date_start ? new Date(job.date_start + 'T12:00:00Z').toLocaleDateString('ru-RU') : 'Дата не указана'}</span><span>◷ {job.time_start?.slice(0, 5) || (priority ? 'Ближайшее' : 'Время не указано')}{job.time_end ? ' - ' + job.time_end.slice(0, 5) : ''}</span></div>
+        <div className="meta"><span>📅 {job.date_start ? new Date(job.date_start + 'T12:00:00Z').toLocaleDateString('ru-RU') : 'Дата не указана'}{job.date_end && job.date_end !== job.date_start ? ' по ' + new Date(job.date_end + 'T12:00:00Z').toLocaleDateString('ru-RU') : ''}</span><span>◷ {job.time_start?.slice(0, 5) || (priority ? 'Ближайшее' : 'Время не указано')}{job.time_end ? ' - ' + job.time_end.slice(0, 5) : ''}</span></div>
         <div className="job-foot"><span className="small muted">{job.city}</span>{!preview && <Link className="button" href={'/jobs/' + job.id}>Подробнее →</Link>}</div>
     </article>;
 }
