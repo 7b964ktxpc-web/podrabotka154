@@ -77,7 +77,7 @@ export function JobForm({ cities, categories, job }: {
       </label>
 
       <label className="span">Ссылка на карту
-        <input name="map_url" type="url" inputMode="url" maxLength={2000} defaultValue={(job as Job & { map_url?: string | null })?.map_url || ''} placeholder="https://yandex.ru/maps/... или https://2gis.ru/..." />
+        <input name="map_url" type="url" inputMode="url" maxLength={2000} defaultValue={job?.map_url || ''} placeholder="https://yandex.ru/maps/... или https://2gis.ru/..." />
         <small>Администратор сам открывает нужное место в 2ГИС или Яндекс Картах, копирует ссылку и вставляет сюда. На сайте будет одна кнопка «Посмотреть карту».</small>
       </label>
 
