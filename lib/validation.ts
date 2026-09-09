@@ -11,7 +11,7 @@ export const jobSchema = z.object({
     title: z.string().trim().min(2).max(200), description: z.string().trim().min(10).max(20000), city_id: z.string().uuid(), category: z.string().uuid().or(z.literal('')).default(''),
     salary_min: amount, salary_max: amount, salary_type: z.enum(['', 'shift', 'hour', 'month', 'task']).default(''), address_raw: optional(500), employment_type: optional(60), payment_type: z.enum(['', 'daily', 'immediate', 'weekly', 'monthly', 'other']).default(''),
     date_start: date, date_end: date, time_start: time, time_end: time, contact_phone: phone, contact_telegram: telegram, contact_email: z.string().email().or(z.literal('')).default('').transform(v => v || null), photo_url: url,
-    latitude: coordinate, longitude: coordinate
+    latitude: coordinate, longitude: coordinate, map_url: url
 }).refine(p => p.salary_max === null || p.salary_min === null || p.salary_max >= p.salary_min, { message: 'Максимальная оплата меньше минимальной', path: ['salary_max'] })
     .refine(p => !p.date_start || !p.date_end || p.date_end >= p.date_start, { message: 'Дата окончания раньше начала', path: ['date_end'] })
     .refine(p => (p.latitude === null) === (p.longitude === null), { message: 'Укажите обе координаты или оставьте обе пустыми', path: ['latitude'] });
@@ -23,6 +23,7 @@ export function friendly(error: unknown): string {
     if (error instanceof z.ZodError) return 'Проверьте поля: ' + error.issues.map(x => x.path.join('.') + ': ' + x.message).join('; ');
     const msg = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
     if (msg.includes('INVALID_COORDINATES')) return 'Проверьте координаты: широта от −90 до 90, долгота от −180 до 180.';
+    if (msg.includes('INVALID_MAP_URL')) return 'Ссылка на карту должна начинаться с https://.';
     if (msg.includes('FREE_LIMIT')) return 'Бесплатный лимит занят. Дождитесь завершения активной вакансии или используйте пакет размещений.';
     if (msg.includes('EMPLOYER_REQUIRED')) return 'Сначала заполните профиль работодателя.';
     if (msg.includes('EXPIRED_DATE')) return 'Дата окончания уже прошла.';
