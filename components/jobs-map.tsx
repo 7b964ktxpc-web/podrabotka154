@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import 'leaflet/dist/leaflet.css';
 import type { Job } from '@/lib/types';
 
 const MapContainer = dynamic(() => import('react-leaflet').then(m => m.MapContainer), { ssr: false });
