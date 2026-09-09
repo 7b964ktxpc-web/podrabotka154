@@ -43,8 +43,13 @@ export async function GET(request: Request) {
       });
       if (saveError) throw saveError;
 
+      // The upsert RPC returns both existing and newly inserted messages.
+      // Only send new messages to the AI parser so the 15-minute cron does
+      // not repeatedly spend tokens on the same Telegram posts.
+      const newMessages = (saved ?? []).filter((message) => message.is_new);
+
       let parsed = 0;
-      for (const message of saved ?? []) {
+      for (const message of newMessages) {
         try {
           const parsedJob = await parser.parse(message.message_text);
           checkPublicResult(
@@ -56,14 +61,26 @@ export async function GET(request: Request) {
           );
           parsed++;
           processed++;
-        } catch {
+        } catch (e) {
           failed++;
+          console.error('Public Telegram parse failed', {
+            source: source.username,
+            messageId: message.id,
+            error: e instanceof Error ? e.message : 'Unknown parse error',
+          });
         }
       }
 
       await adapter.disconnect();
       adapter = null;
-      results.push({ source: source.username, fetched: messages.length, saved: saved?.length ?? 0, parsed });
+      results.push({
+        source: source.username,
+        fetched: messages.length,
+        saved: saved?.length ?? 0,
+        new: newMessages.length,
+        parsed,
+        failed,
+      });
     } catch (e) {
       if (adapter) {
         try { await adapter.disconnect(); } catch { /* ignore cleanup errors */ }
