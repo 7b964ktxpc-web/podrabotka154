@@ -1,15 +1,15 @@
-const appUrl = process.env.APP_URL?.replace(/\/+$/, "");
+const appHost = process.env.APP_HOST?.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 const cronSecret = process.env.CRON_SECRET;
 
-if (!appUrl) {
-  throw new Error("APP_URL is not configured");
+if (!appHost) {
+  throw new Error("APP_HOST is not configured");
 }
 
 if (!cronSecret) {
   throw new Error("CRON_SECRET is not configured");
 }
 
-const response = await fetch(`${appUrl}/api/telegram/import-public`, {
+const response = await fetch(`http://${appHost}/api/telegram/import-public`, {
   method: "POST",
   headers: {
     authorization: `Bearer ${cronSecret}`,
