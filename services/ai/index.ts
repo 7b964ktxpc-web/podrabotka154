@@ -1,7 +1,8 @@
 import { parseSalary, type ParsedJob } from '../../lib/domain.ts';
 
+export interface ParseContext { referenceDate?: string | Date | null; }
 export interface AIProvider { extract(text: string): Promise<ParsedJob>; }
-export interface JobParser { parse(text: string): Promise<ParsedJob>; }
+export interface JobParser { parse(text: string, context?: ParseContext): Promise<ParsedJob>; }
 export interface JobModerator { review(job: ParsedJob): Promise<{ status: 'pending_moderation'; reason: string; }>; }
 export class HumanReviewModerator implements JobModerator { async review() { return { status: 'pending_moderation' as const, reason: 'Требуется решение администратора' }; } }
 
@@ -11,7 +12,7 @@ const NAMED_STREET_WITH_NUMBER = /(?:^|[^А-Яа-яЁёA-Za-z])([А-ЯЁ][а-я�
 const STREET_NAME_WITH_TYPE = /(?:^|[^А-Яа-яЁёA-Za-z])([А-ЯЁ][а-яё-]{3,39}\s+(?:улица|ул\.))\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
 const STREET_WITHOUT_NUMBER = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?)\s+[А-Яа-яЁёA-Za-z-]{3,40}(?:\s+[А-Яа-яЁёA-Za-z-]{2,40})?/iu;
 const CITY_ADDRESS = /^(?:[А-Яа-яЁёA-Za-z -]{3,40},\s*\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?|(?:Новосибирск|Краснообск|Бердск|Обь)\s+\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?)$/iu;
-const DATE_TIME = /(?:дата\s*:\s*)?(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s+(\d{1,2})[:.](\d{2}))?/iu;
+const DATE_TIME = /(?:дата\s*:\s*)?(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})(?:\s+(\d{1,2})[:.](\d{2}))?/iu;
 const TIME = /\b(\d{1,2})[:.](\d{2})\b/u;
 const ROLE_WORDS = /(?:требуется|нужен|нужна|нужны|ищем|грузчик[аи]?|курьер|водитель|помощник|работник|человек|чел\.)/iu;
 const GENERIC_ADDRESS_WORDS = /(?:ближайшее|ближайший|срочно|подработка|работа|смена|сегодня|завтра)/iu;
@@ -34,11 +35,29 @@ function extractAddress(text: string): string | null {
     return null;
 }
 
-function extractDateTime(text: string): Pick<ParsedJob, 'date_start' | 'date_end' | 'time_start' | 'time_end'> {
+function referenceDay(context?: ParseContext): Date | null {
+    if (!context?.referenceDate) return null;
+    const d = context.referenceDate instanceof Date ? new Date(context.referenceDate) : new Date(context.referenceDate);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+function localDateFromReference(context: ParseContext | undefined, offset: number): string | null {
+    const ref = referenceDay(context); if (!ref) return null;
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Novosibirsk', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(ref);
+    const value = (type: string) => parts.find(p => p.type === type)?.value;
+    const base = new Date(`${value('year')}-${value('month')}-${value('day')}T12:00:00Z`);
+    if (Number.isNaN(base.getTime())) return null;
+    base.setUTCDate(base.getUTCDate() + offset); return base.toISOString().slice(0, 10);
+}
+function extractDateTime(text: string, context?: ParseContext): Pick<ParsedJob, 'date_start' | 'date_end' | 'time_start' | 'time_end'> {
     const dateMatch = text.match(DATE_TIME);
     const timeMatches = [...text.matchAll(/(?:^|\n|\s)(?:с|от|к|до|на)\s*(\d{1,2})[:.](\d{2})\b/giu)];
     let date_start: string | null = null, time_start: string | null = null, time_end: string | null = null;
-    if (dateMatch) { date_start = `${dateMatch[3]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`; if (dateMatch[4] && dateMatch[5]) time_start = `${dateMatch[4].padStart(2, '0')}:${dateMatch[5]}`; }
+    if (dateMatch) {
+        const year = dateMatch[3].length === 2 ? `20${dateMatch[3]}` : dateMatch[3];
+        date_start = `${year}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`;
+        if (dateMatch[4] && dateMatch[5]) time_start = `${dateMatch[4].padStart(2, '0')}:${dateMatch[5]}`;
+    } else if (/\bсегодня\b/iu.test(text)) date_start = localDateFromReference(context, 0);
+    else if (/\bзавтра\b/iu.test(text)) date_start = localDateFromReference(context, 1);
     for (const match of timeMatches) { const time = `${match[1].padStart(2, '0')}:${match[2]}`; const prefix = match[0].trim().toLocaleLowerCase('ru'); if (prefix.startsWith('до')) time_end = time; else if (!time_start) time_start = time; }
     if (!time_start) {
         const bare = text.split(/\r?\n/).map(x => x.trim()).find(line => TIME.test(line) && line.length <= 12 && !/^(?:с|от|к|до|на)\s*\d{1,2}[:.]\d{2}$/iu.test(line));
@@ -82,14 +101,14 @@ function extractTitle(lines: string[]): string | null {
 }
 
 export class ConservativeParser implements JobParser {
-    async parse(text: string): Promise<ParsedJob> {
+    async parse(text: string, context?: ParseContext): Promise<ParsedJob> {
         const result: ParsedJob = { is_job: false, title: null, description: null, category: null, salary_min: null, salary_max: null, salary_type: null, city: null, address: null, date_start: null, date_end: null, time_start: null, time_end: null, employment_type: null, payment_type: null, contact_phone: null, contact_telegram: null, contact_email: null, confidence: 0 };
         const cleanText = text.trim();
         if (!/(?:требу[ею]тся|ваканси[яи]|ищем\s|нужен\s|нужны\s|подработка|грузчик[аи]?|\d+\s*(?:человек|чел\.|грузчик[аи]?))|(?:\d+\s*(?:человек|чел\.|грузчик[аи]?)\b[\s\S]{0,220}\b(?:нужн|работ|разгруз|перевез|погруз|сбор|уборк|помощ|треб))/iu.test(cleanText) || cleanText.length < 10) return result;
         result.is_job = true; result.description = cleanText;
         const lines = cleanText.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
         result.title = extractTitle(lines);
-        Object.assign(result, parseSalary(cleanText), extractDateTime(cleanText));
+        Object.assign(result, parseSalary(cleanText), extractDateTime(cleanText, context));
         result.payment_type = extractPaymentType(cleanText);
         result.employment_type = extractEmploymentType(cleanText);
         result.contact_telegram = cleanText.match(/(?:https?:\/\/t\.me\/|(?<![\w.%+-])@)([A-Za-z][A-Za-z0-9_]{4,31})\b/)?.[1] ?? null;
