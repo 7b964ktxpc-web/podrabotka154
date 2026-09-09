@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       const newMessages = (saved ?? []).filter((message: { is_new?: boolean }) => message.is_new === true);
       for (const message of newMessages) {
         try {
-          const parsedJob = await parser.parse(message.message_text);
+          const parsedJob = await parser.parse(message.message_text, { referenceDate: message.message_date });
           const stored = await client.rpc('store_public_telegram_parsed', {
             p_message: message.id,
             p_result: parsedJob,
