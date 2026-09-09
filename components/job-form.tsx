@@ -76,6 +76,17 @@ export function JobForm({ cities, categories, job }: {
         <small>Укажите улицу и номер дома, если они известны. Если адреса нет — оставьте пустым. Кнопки 2ГИС и Яндекс Карты появятся автоматически только при наличии адреса.</small>
       </label>
 
+      <div className="span form-grid" style={{ marginTop: '-0.25rem' }}>
+        <label>Широта
+          <input type="number" name="latitude" min={-90} max={90} step="any" defaultValue={job?.latitude ?? ''} placeholder="55.0302" />
+          <small>Точная точка для карты. Не указывайте координаты наугад.</small>
+        </label>
+        <label>Долгота
+          <input type="number" name="longitude" min={-180} max={180} step="any" defaultValue={job?.longitude ?? ''} placeholder="82.9204" />
+          <small>Заполняйте вместе с широтой.</small>
+        </label>
+      </div>
+
       <label>Телефон
         <input name="contact_phone" type="tel" defaultValue={job?.contact_phone || ''} placeholder="Например: +7 900 000-00-00" />
         <small>Телефон, по которому кандидат сможет связаться с работодателем.</small>
