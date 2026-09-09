@@ -9,6 +9,7 @@ export type Job = {
     address_normalized: string | null;
     latitude: number | null;
     longitude: number | null;
+    location_precision: 'exact' | 'approximate' | 'unknown';
     salary_min: number | null;
     salary_max: number | null;
     salary_type: string | null;
