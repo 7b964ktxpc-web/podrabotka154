@@ -8,11 +8,11 @@ import { employmentLabel, isPriorityJobText, paymentLabel, priorityLabel, salary
 
 function value(v: unknown) { return v === null || v === undefined || v === '' ? '—' : String(v); }
 
-function reviewState(job: { title?: string | null; address_raw?: string | null; contact_phone?: string | null; contact_telegram?: string | null; salary_min?: number | null; salary_max?: number | null; date_start?: string | null; time_start?: string | null; ai_confidence?: number | null; }, priority: boolean) {
+function reviewState(job: { title?: string | null; address_raw?: string | null; contact_phone?: string | null; contact_telegram?: string | null; contact_email?: string | null; salary_min?: number | null; salary_max?: number | null; date_start?: string | null; time_start?: string | null; ai_confidence?: number | null; }, priority: boolean) {
     const missing: string[] = [];
     if (!job.title?.trim()) missing.push('название');
     if (!job.address_raw?.trim()) missing.push('адрес');
-    if (!job.contact_phone && !job.contact_telegram) missing.push('контакт');
+    if (!job.contact_phone && !job.contact_telegram && !job.contact_email) missing.push('контакт');
     if (job.salary_min == null && job.salary_max == null) missing.push('оплата');
     if (!job.date_start) missing.push('дата');
     // «Ближайшее» намеренно может не содержать точного времени начала.
@@ -50,6 +50,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
                         <div><strong>Время</strong><br />{j.time_start || j.time_end ? `${j.time_start ? `с ${j.time_start}` : ''}${j.time_start && j.time_end ? ' ' : ''}${j.time_end ? `до ${j.time_end}` : ''}` : (isPriority ? 'Ближайшее' : '—')}</div>
                         <div><strong>Телефон</strong><br />{value(j.contact_phone)}</div>
                         <div><strong>Telegram</strong><br />{value(j.contact_telegram)}</div>
+                        <div><strong>Email</strong><br />{value(j.contact_email)}</div>
                     </div>
                     <p className="message">{j.moderation_reason || 'Ручная проверка'}</p>
                     <p style={{ whiteSpace: 'pre-wrap' }}>{j.original_text || j.description}</p>
