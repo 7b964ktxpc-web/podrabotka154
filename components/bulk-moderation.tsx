@@ -26,9 +26,15 @@ export function BulkModeration({ jobs }: { jobs: Job[] }) {
           <span>{job.title}</span>
         </label>)}
       </div>
-      <label>Решение<select name="status" defaultValue="published"><option value="published">Опубликовать</option><option value="rejected">Отклонить</option><option value="archived">Архивировать</option><option value="draft">Вернуть в черновик</option></select></label>
+      <label>Решение<select name="status" defaultValue="" required>
+        <option value="" disabled>Выберите решение</option>
+        <option value="published">Опубликовать</option>
+        <option value="rejected">Отклонить</option>
+        <option value="archived">Архивировать</option>
+        <option value="draft">Вернуть в черновик</option>
+      </select></label>
       <label>Причина<textarea name="reason" maxLength={1000} placeholder="Что нужно исправить или почему принято решение" /></label>
-      <p className="small muted">Публикация отправит объявления в каталог. Перед публикацией проверьте оплату, адрес и контакты.</p>
+      <p className="small muted">Публикация — явное действие. Выберите «Опубликовать» только после проверки оплаты, адреса и контактов.</p>
     </div>
   </ActionForm>;
 }
