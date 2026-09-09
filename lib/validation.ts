@@ -22,6 +22,13 @@ export function friendly(error: unknown): string {
     if (error instanceof z.ZodError)
         return 'Проверьте поля: ' + error.issues.map(x => x.path.join('.') + ': ' + x.message).join('; ');
     const msg = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
+    if (msg.includes('MISSING_TITLE')) return 'Перед публикацией нужно указать название вакансии.';
+    if (msg.includes('MISSING_ADDRESS')) return 'Перед публикацией нужно указать адрес.';
+    if (msg.includes('MISSING_CONTACT')) return 'Перед публикацией укажите телефон, Telegram или email.';
+    if (msg.includes('MISSING_SALARY')) return 'Перед публикацией нужно указать оплату.';
+    if (msg.includes('MISSING_DATE')) return 'Перед публикацией нужно указать дату начала.';
+    if (msg.includes('MISSING_TIME')) return 'Перед публикацией нужно указать время начала. Для «Ближайшее» и «Срочно» точное время не обязательно.';
+    if (msg.includes('INVALID_BATCH')) return 'Выберите от 1 до 100 объявлений.';
     if (msg.includes('FREE_LIMIT'))
         return 'Бесплатный лимит занят. Дождитесь завершения активной вакансии или используйте пакет размещений.';
     if (msg.includes('EMPLOYER_REQUIRED'))
