@@ -16,7 +16,7 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: CRON_SECRET
-        sync: false
+        generateValue: true
 
   - type: cron
     name: podrabotka154-public-telegram-import
@@ -26,7 +26,13 @@ services:
     startCommand: npm run import-public
     schedule: "*/15 * * * *"
     envVars:
-      - key: APP_URL
-        sync: false
+      - key: APP_HOST
+        fromService:
+          name: podrabotka154
+          type: web
+          property: host
       - key: CRON_SECRET
-        sync: false
+        fromService:
+          name: podrabotka154
+          type: web
+          envVarKey: CRON_SECRET
