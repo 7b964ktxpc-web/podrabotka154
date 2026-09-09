@@ -48,6 +48,17 @@ test('форма вакансии отклоняет дату окончания
   if (!result.success) assert.ok(result.error.issues.some(x => x.path.join('.') === 'date_end'));
 });
 
+test('форма вакансии отклоняет время окончания раньше начала', () => {
+  const result = jobSchema.safeParse({ ...validJob, time_start: '18:00', time_end: '09:00' });
+  assert.equal(result.success, false);
+  if (!result.success) assert.ok(result.error.issues.some(x => x.path.join('.') === 'time_end'));
+});
+
+test('форма вакансии допускает только время окончания для приоритетной вакансии', () => {
+  const result = jobSchema.safeParse({ ...validJob, time_start: '', time_end: '17:30' });
+  assert.equal(result.success, true);
+});
+
 test('форма вакансии отклоняет некорректный телефон', () => {
   const result = jobSchema.safeParse({ ...validJob, contact_phone: 'abc' });
   assert.equal(result.success, false);
