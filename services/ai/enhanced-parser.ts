@@ -32,7 +32,11 @@ function explicitDate(text: string): string | null {
 
 function firstStartTime(text: string): string | null {
   for (const match of text.matchAll(TIME_RE)) {
-    const before = text.slice(Math.max(0, match.index ?? 0) - 8, match.index ?? 0);
+    const index = match.index ?? 0;
+    const end = index + match[0].length;
+    // A dotted numeric date such as 08.09.26 must never become a time 08:09.
+    if (match[0].includes('.') && (text[index - 1] === '.' || text[end] === '.' || /\d/.test(text[index - 1] ?? '') || /\d/.test(text[end] ?? ''))) continue;
+    const before = text.slice(Math.max(0, index - 8), index);
     if (/(?:до|по)\s*$/iu.test(before)) continue;
     return `${match[1].padStart(2, '0')}:${match[2]}`;
   }
