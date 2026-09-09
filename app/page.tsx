@@ -5,13 +5,13 @@ import { check } from '@/lib/service-db';
 import { Search } from '@/components/search';
 import { JobCard } from '@/components/job-card';
 import { Setup } from '@/components/setup';
+import { isPriorityJobText } from '@/lib/domain';
 import type { Job, Option } from '@/lib/types';
 
 export const metadata = { alternates: { canonical: '/' } };
 
 function priorityScore(job: Job) {
-  const text = `${job.title ?? ''} ${job.description ?? ''} ${job.original_text ?? ''}`.toLowerCase();
-  return /\b(ближайш\w*|срочно|сейчас|немедленно)\b/i.test(text) ? 1 : 0;
+  return isPriorityJobText(`${job.title ?? ''} ${job.description ?? ''} ${job.original_text ?? ''}`) ? 1 : 0;
 }
 
 export default async function Home() {
