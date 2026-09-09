@@ -9,7 +9,16 @@ export default async function Telegram() {
     const { data: sources } = check(await client.from('telegram_sources').select('*').order('created_at').limit(100));
     const { data: cities } = check(await client.from('cities').select('id,name').eq('active', true));
     const { data: messages } = check(await client.from('telegram_messages').select('*').order('created_at', { ascending: false }).limit(20));
+    const { data: allMessageStates } = check(await client.from('telegram_messages').select('parse_status').limit(5000));
     const { data: runs } = check(await client.from('parser_runs').select('*').order('created_at', { ascending: false }).limit(20));
+
+    const status = { pending: 0, processing: 0, processed: 0, error: 0 };
+    for (const message of allMessageStates ?? []) {
+        if (message.parse_status === 'pending') status.pending++;
+        else if (message.parse_status === 'processing') status.processing++;
+        else if (message.parse_status === 'processed') status.processed++;
+        else if (message.parse_status === 'error') status.error++;
+    }
 
     function form(s?: Record<string, string | boolean>) {
         return <ActionForm action={saveTelegramSource} label="Сохранить источник">
@@ -26,6 +35,14 @@ export default async function Telegram() {
     return <>
         <h1>Источники Telegram</h1>
         <p className="message">Добавляй сюда любые открытые Telegram-каналы. Для публичного канала достаточно ссылки или @username — бот не нужен. После сохранения канал сразу проверяется и загружаются последние сообщения. Дальше каждые 15 минут система проверяет все активные публичные источники.</p>
+
+        <h2>Состояние обработки</h2>
+        <div className="data-row">
+            <strong>Всего сообщений: {allMessageStates?.length ?? 0}</strong>
+            <p className="small muted">В очереди: {status.pending} · Обрабатываются: {status.processing} · Обработано: {status.processed} · Ошибки: {status.error}</p>
+        </div>
+        {status.error > 0 && <p role="alert" className="message error">Есть сообщения с ошибкой парсинга. Открой последние сообщения ниже и проверь поле ошибки.</p>}
+
         {sources?.map(s => <details key={s.id}>
             <summary>{s.name} · @{s.username} · {s.active ? 'активен' : 'отключён'}{s.last_error ? ' · ошибка' : ''}</summary>
             {form(s)}
@@ -49,7 +66,13 @@ export default async function Telegram() {
             <label>Полный оригинальный текст<textarea name="message_text" required maxLength={20000} placeholder="Вставьте текст целиком"/></label>
         </ActionForm>
         <h2 style={{ marginTop: 32 }}>Последние 20 сообщений</h2>
-        {messages?.map(m => <details key={m.id}><summary>Сообщение {m.telegram_message_id} · {new Date(m.message_date).toLocaleString('ru-RU')}</summary><p style={{ whiteSpace: 'pre-wrap' }}>{m.message_text}</p><a href={m.message_url} target="_blank" rel="noopener noreferrer">Оригинал ↗</a></details>)}
+        {messages?.map(m => <details key={m.id}>
+            <summary>Сообщение {m.telegram_message_id} · {new Date(m.message_date).toLocaleString('ru-RU')} · {m.parse_status === 'error' ? 'ОШИБКА' : m.parse_status === 'processed' ? 'обработано' : m.parse_status === 'processing' ? 'обрабатывается' : 'в очереди'}</summary>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{m.message_text}</p>
+            {m.parse_error && <p role="alert" className="message error">Ошибка парсинга: {m.parse_error}</p>}
+            {m.parse_attempts > 0 && <p className="small muted">Попыток: {m.parse_attempts}{m.parsed_at ? ` · обработано ${new Date(m.parsed_at).toLocaleString('ru-RU')}` : ''}</p>}
+            <a href={m.message_url} target="_blank" rel="noopener noreferrer">Оригинал ↗</a>
+        </details>)}
         <h2 style={{ marginTop: 32 }}>Последние обработки</h2>
         {runs?.map(r => <div className="data-row" key={r.id}>{r.provider} · {r.error || 'Обработано'}<p className="small muted">{r.created_at}</p></div>)}
     </>;
