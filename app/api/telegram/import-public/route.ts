@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { serviceDb } from '@/lib/service-db';
 import { fingerprint } from '@/lib/domain';
 import { createVacancyParser } from '@/services/ai/agent';
 import { PublicChannelAdapter } from '@/services/telegram';
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
   }
 
   const client = await db();
+  const admin = serviceDb();
   const { data: sources, error } = await client.rpc('list_public_telegram_sources');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -65,7 +67,7 @@ export async function GET(request: Request) {
             try {
               const geo = await geocodeAddress(parsedJob.address, source.city);
               if (geo) {
-                const { error: geoError } = await client
+                const { error: geoError } = await admin
                   .from('jobs')
                   .update({
                     latitude: geo.latitude,
@@ -119,6 +121,43 @@ export async function GET(request: Request) {
       }
       const message = e instanceof Error ? e.message : 'Unknown import error';
       results.push({ source: source.username, error: message });
+    }
+  }
+
+  // Backfill coordinates for older Telegram jobs that were imported before
+  // automatic geocoding was enabled. Only exact-address jobs are eligible.
+  if (process.env.YANDEX_GEOCODER_API_KEY) {
+    const { data: pendingGeo, error: pendingGeoError } = await admin
+      .from('jobs')
+      .select('id,address_raw,city')
+      .eq('source_type', 'telegram')
+      .eq('location_precision', 'exact')
+      .is('latitude', null)
+      .not('address_raw', 'is', null)
+      .limit(20);
+
+    if (pendingGeoError) {
+      console.error('Telegram geocode queue read failed', pendingGeoError);
+    } else {
+      for (const job of pendingGeo ?? []) {
+        try {
+          const geo = await geocodeAddress(job.address_raw, job.city);
+          if (!geo) continue;
+          const { error: updateError } = await admin
+            .from('jobs')
+            .update({ latitude: geo.latitude, longitude: geo.longitude, location_precision: geo.precision })
+            .eq('id', job.id)
+            .is('latitude', null);
+          if (updateError) throw updateError;
+          geocoded++;
+        } catch (e) {
+          geocodeFailed++;
+          console.error('Telegram geocode backfill failed', {
+            jobId: job.id,
+            error: e instanceof Error ? e.message : 'Unknown geocoding error',
+          });
+        }
+      }
     }
   }
 
