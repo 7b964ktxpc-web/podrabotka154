@@ -30,10 +30,13 @@ function explicitDate(text: string): string | null {
   return Number.isNaN(Date.parse(iso)) ? null : iso;
 }
 
-function firstTime(text: string): string | null {
-  const match = text.match(TIME_RE);
-  if (!match) return null;
-  return match[0].replace('.', ':').replace(/^(\d):/, '0$1:');
+function firstStartTime(text: string): string | null {
+  for (const match of text.matchAll(TIME_RE)) {
+    const before = text.slice(Math.max(0, match.index ?? 0) - 8, match.index ?? 0);
+    if (/(?:до|по)\s*$/iu.test(before)) continue;
+    return `${match[1].padStart(2, '0')}:${match[2]}`;
+  }
+  return null;
 }
 
 function endTime(text: string): string | null {
@@ -66,8 +69,8 @@ export class EnhancedConservativeParser implements JobParser {
     // The base parser already handles lines such as "к 13:00". This pass also
     // catches natural Telegram phrases such as "Сегодня в 20:00".
     if (!result.time_start) {
-      const start = firstTime(text);
-      if (start && !/^.*(?:до|по)\s*${start}$/iu.test(text)) result.time_start = start;
+      const start = firstStartTime(text);
+      if (start) result.time_start = start;
     }
 
     return result;
