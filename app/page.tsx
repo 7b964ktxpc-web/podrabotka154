@@ -23,5 +23,28 @@ export default async function Home() {
     .sort((a, b) => priorityScore(b) - priorityScore(a) || new Date(b.published_at ?? 0).getTime() - new Date(a.published_at ?? 0).getTime())
     .slice(0, 5);
 
-  return <><section className="hero"><span className="eyebrow">Городские объявления · без лишних шагов</span><h1>Подработка в Новосибирске</h1><p className="lead">Найди подработку на сегодня, завтра или на несколько дней.</p><Search /></section><div className="chips" aria-label="Категории">{(categories as Option[]).map(x => <Link className="chip" key={x.id} href={'/jobs?category=' + x.id}>{x.name} ↗</Link>)}</div><div className="row"><Link className="chip" href="/jobs?day=today">Сегодня</Link><Link className="chip" href="/jobs?day=tomorrow">Завтра</Link><Link className="chip" href="/jobs?min=3000">От 3 000 ₽ / смена</Link><Link className="chip" href="/jobs?instant=1">С оплатой сразу</Link><Link className="chip" href="/jobs?employer=1">От работодателя</Link><Link className="chip" href="/jobs?address=1">С адресом</Link></div><div className="section-head"><h2>Свежие объявления</h2><Link href="/jobs">Весь каталог →</Link></div>{visibleJobs.length ? visibleJobs.map(j => <JobCard key={j.id} job={j}/>) : <div className="empty"><h2>Пока нет опубликованных вакансий</h2><p className="muted">Объявления появятся после импорта и проверки. Работодатель может разместить первую вакансию.</p><Link className="button" href="/employer/jobs/new">Разместить вакансию</Link></div>}</>;
+  return <>
+    <section className="hero">
+      <span className="eyebrow">Подработка в Новосибирске</span>
+      <h1>Найди работу на сегодня</h1>
+      <p className="lead">Актуальные подработки рядом с тобой — с адресом, оплатой и временем выхода.</p>
+      <Search />
+      <div className="hero-points" aria-label="Преимущества">
+        <span><b>Ближайшее</b> — сверху</span>
+        <span><b>Понятная оплата</b> — за час или смену</span>
+        <span><b>Связаться сразу</b> — телефон или Telegram</span>
+      </div>
+    </section>
+    <div className="chips" aria-label="Категории">{(categories as Option[]).map(x => <Link className="chip" key={x.id} href={'/jobs?category=' + x.id}>{x.name} ↗</Link>)}</div>
+    <div className="row">
+      <Link className="chip" href="/jobs?day=today">Сегодня</Link>
+      <Link className="chip" href="/jobs?day=tomorrow">Завтра</Link>
+      <Link className="chip" href="/jobs?min=3000">От 3 000 ₽ / смена</Link>
+      <Link className="chip" href="/jobs?instant=1">С оплатой сразу</Link>
+      <Link className="chip" href="/jobs?employer=1">От работодателя</Link>
+      <Link className="chip" href="/jobs?address=1">С адресом</Link>
+    </div>
+    <div className="section-head"><h2>Свежие объявления</h2><Link href="/jobs">Весь каталог →</Link></div>
+    {visibleJobs.length ? visibleJobs.map(j => <JobCard key={j.id} job={j}/>) : <div className="empty"><h2>Пока нет опубликованных вакансий</h2><p className="muted">Объявления появятся после импорта и проверки. Работодатель может разместить первую вакансию.</p><Link className="button" href="/employer/jobs/new">Разместить вакансию</Link></div>}
+  </>;
 }
