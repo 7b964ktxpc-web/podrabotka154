@@ -3,8 +3,6 @@ name: render-ci
 on:
   push:
     branches: [render]
-  pull_request:
-    branches: [render]
 
 jobs:
   verify:
