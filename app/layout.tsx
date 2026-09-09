@@ -32,5 +32,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <p>Не переводите предоплату за трудоустройство. Проверяйте условия и работодателя до начала работы.</p>
       </div>
     </footer>
+    <nav className="mobile-nav" aria-label="Быстрая навигация">
+      <Link href="/jobs"><span aria-hidden="true">⌕</span><small>Работа</small></Link>
+      <Link href="/favorites"><span aria-hidden="true">♡</span><small>Избранное</small></Link>
+      <Link className="mobile-nav-add" href="/jobs/new" aria-label="Разместить вакансию"><span aria-hidden="true">＋</span></Link>
+      <Link href="/profile"><span aria-hidden="true">◎</span><small>Кабинет</small></Link>
+      <Link href="/employer"><span aria-hidden="true">▣</span><small>Бизнес</small></Link>
+    </nav>
   </body></html>;
 }
