@@ -17,6 +17,8 @@ export default function Login() {
       </div>
     </div>
     <div className="auth-card panel">
+      <div className="auth-card-brand"><Link href="/" className="brand">подработка<span>154</span></Link></div>
+      <p className="eyebrow">Личный кабинет</p>
       <h2>Войти или зарегистрироваться</h2>
       <p className="small muted">Один аккаунт подходит и соискателям, и работодателям.</p>
       <ActionForm action={loginAction} label="Продолжить">
@@ -26,7 +28,7 @@ export default function Login() {
         <p className="small muted">При регистрации потребуется подтверждение email.</p>
       </ActionForm>
       <details className="auth-reset"><summary>Забыли пароль?</summary><ActionForm action={resetPassword} label="Отправить письмо"><label>Email<input name="email" type="email" required autoComplete="email" placeholder="you@example.org" /></label></ActionForm></details>
-      <Link className="auth-back" href="/">← Вернуться на главную</Link>
+      <Link className="auth-back" href="/jobs">← Вернуться к вакансиям</Link>
     </div>
   </section>;
 }
