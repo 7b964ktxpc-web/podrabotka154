@@ -10,7 +10,7 @@ if (!cronSecret) {
 }
 
 const response = await fetch(`http://${appHost}/api/telegram/import-public`, {
-  method: "POST",
+  method: "GET",
   headers: {
     authorization: `Bearer ${cronSecret}`,
   },
