@@ -1,3 +1,5 @@
+export {};
+
 const appHost = process.env.APP_HOST?.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 const cronSecret = process.env.CRON_SECRET;
 
