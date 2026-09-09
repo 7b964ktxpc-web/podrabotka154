@@ -22,6 +22,7 @@ export function friendly(error: unknown): string {
     if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) throw error;
     if (error instanceof z.ZodError) return 'Проверьте поля: ' + error.issues.map(x => x.path.join('.') + ': ' + x.message).join('; ');
     const msg = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
+    if (msg.includes('INVALID_COORDINATES')) return 'Проверьте координаты: широта от −90 до 90, долгота от −180 до 180.';
     if (msg.includes('FREE_LIMIT')) return 'Бесплатный лимит занят. Дождитесь завершения активной вакансии или используйте пакет размещений.';
     if (msg.includes('EMPLOYER_REQUIRED')) return 'Сначала заполните профиль работодателя.';
     if (msg.includes('EXPIRED_DATE')) return 'Дата окончания уже прошла.';
