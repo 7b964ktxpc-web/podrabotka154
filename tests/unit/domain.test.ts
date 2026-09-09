@@ -21,7 +21,10 @@ test('без единицы не угадываем', () => assert.equal(parseSa
 test('месячная оплата', () => assert.equal(parseSalary('60 000 рублей в месяц').salary_type, 'month'));
 test('обратный диапазон не угадываем', () => assert.equal(parseSalary('5000-4000 ₽').salary_min, null));
 test('неизвестная зарплата видна явно', () => assert.equal(salaryLabel({ salary_min: null, salary_max: null, salary_type: null }), 'Оплата не указана'));
-test('ближайшее — приоритет', () => { assert.equal(isPriorityJobText('НА БЛИЖАЙШЕЕ\nдо 17:30\nнужен 1 грузчик'), true); assert.equal(priorityLabel('ближайшее!'), '🔥 ПРИОРИТЕТ'); });
+test('ближайшее — приоритет', () => { assert.equal(isPriorityJobText('НА БЛИЖАЙШЕЕ\nдо 17:30\nнужен 1 грузчик'), true); assert.equal(priorityLabel('ближайшее!'), '🔥 БЛИЖАЙШЕЕ'); });
+test('срочно — отдельная метка приоритета', () => assert.equal(priorityLabel('СРОЧНО нужен 1 грузчик'), '⚡ СРОЧНО'));
+test('сейчас — отдельная метка приоритета', () => assert.equal(priorityLabel('Нужен человек сейчас'), '⚡ СЕЙЧАС'));
+test('на сегодня — отдельная метка приоритета', () => assert.equal(priorityLabel('НА СЕГОДНЯ нужен грузчик'), '🔥 НА СЕГОДНЯ'));
 test('обычная дата без срочности не приоритет', () => assert.equal(isPriorityJobText('На 12.09 нужен 1 грузчик в 15:00'), false));
 test('идентичные объявления дедуплицируются', () => assert.equal(fingerprint({ title: 'Грузчик', description: ' Нужен  грузчик ' }), fingerprint({ title: 'грузчик', description: 'Нужен грузчик' })));
 test('другой контакт не объединяется', () => assert.notEqual(fingerprint({ title: 'Грузчик', contact_phone: '1' }), fingerprint({ title: 'Грузчик', contact_phone: '2' })));
@@ -36,5 +39,4 @@ test('корректная подпись webhook', () => { const ts = String(Ma
 test('подмена тела webhook', () => { const ts = String(Math.floor(Date.now() / 1000)); assert.equal(verifySignature('changed', ts, sign('body', ts, 'secret'), 'secret'), false); });
 test('просроченная подпись', () => assert.equal(verifySignature('body', '1', sign('body', '1', 'secret'), 'secret'), false));
 test('невалидная длина подписи не вызывает исключения', () => assert.equal(verifySignature('body', '1', 'xx', 'secret'), false));
-test('защита endpoint от SSRF', () => { for (const url of ['http://127.0.0.1', 'https://127.0.0.1', 'https://fcm.googleapis.com.evil.org', 'https://fcm.googleapis.com:123/', 'https://u:p@fcm.googleapis.com/'])
-    assert.equal(allowedPushEndpoint(url), false); assert.ok(allowedPushEndpoint('https://fcm.googleapis.com/fcm/send/abc')); assert.ok(allowedPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/abc')); });
+test('защита endpoint от SSRF', () => { for (const url of ['http://127.0.0.1', 'https://127.0.0.1', 'https://fcm.googleapis.com.evil.org', 'https://fcm.googleapis.com:123/', 'https://u:p@fcm.googleapis.com/']) assert.equal(allowedPushEndpoint(url), false); assert.ok(allowedPushEndpoint('https://fcm.googleapis.com/fcm/send/abc')); assert.ok(allowedPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/abc')); });
