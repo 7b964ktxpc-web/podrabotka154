@@ -29,6 +29,22 @@ export function parseSalary(text: string): Pick<ParsedJob, 'salary_min' | 'salar
     }
     return unknown;
 }
+
+/** True when the source explicitly marks a job as immediate/near-term. */
+export function isPriorityJobText(text: string | null | undefined): boolean {
+    if (!text) return false;
+    const normalized = text.toLocaleLowerCase('ru').replace(/ё/g, 'е');
+    return /\b(?:на\s+)?ближайш(?:ее|ий|ая|ую)\b/iu.test(normalized)
+        || /\bсрочно\b/iu.test(normalized)
+        || /\bсейчас\b/iu.test(normalized)
+        || /\bнемедленно\b/iu.test(normalized)
+        || /\bна\s+сегодня\b/iu.test(normalized);
+}
+
+export function priorityLabel(text: string | null | undefined): string | null {
+    return isPriorityJobText(text) ? '🔥 ПРИОРИТЕТ' : null;
+}
+
 export function fingerprint(job: Partial<ParsedJob>): string {
     const fields = ['title', 'description', 'salary_min', 'salary_max', 'salary_type', 'city', 'address', 'date_start', 'date_end', 'time_start', 'time_end', 'contact_phone', 'contact_telegram', 'contact_email'] as const;
     return createHash('sha256').update(JSON.stringify(fields.map(k => { const v = job[k]; return typeof v === 'string' ? v.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim() : v ?? null; }))).digest('hex');
