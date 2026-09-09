@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { serviceDb } from '@/lib/service-db';
 import { fingerprint } from '@/lib/domain';
 import { createVacancyParser } from '@/services/ai/agent';
+import { EnhancedConservativeParser } from '@/services/ai/enhanced-parser';
 import { PublicChannelAdapter } from '@/services/telegram';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const parser = createVacancyParser();
+const parser = process.env.PARSER_PROVIDER === 'ai' || process.env.AI_PARSER_ENABLED === 'true'
+  ? createVacancyParser()
+  : new EnhancedConservativeParser();
 
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
