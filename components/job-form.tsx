@@ -73,19 +73,22 @@ export function JobForm({ cities, categories, job }: {
 
       <label className="span">Адрес
         <input name="address_raw" maxLength={500} defaultValue={job?.address_raw || ''} placeholder="Например: ул. Большевистская, 45" />
-        <small>Укажите улицу и номер дома, если они известны. Если адреса нет — оставьте пустым. Кнопки 2ГИС и Яндекс Карты появятся автоматически только при наличии адреса.</small>
+        <small>Адрес показывается в карточке. Никакого автоматического геокодирования.</small>
       </label>
 
-      <div className="span form-grid" style={{ marginTop: '-0.25rem' }}>
-        <label>Широта
-          <input type="number" name="latitude" min={-90} max={90} step="any" defaultValue={job?.latitude ?? ''} placeholder="55.0302" />
-          <small>Точная точка для карты. Не указывайте координаты наугад.</small>
-        </label>
-        <label>Долгота
-          <input type="number" name="longitude" min={-180} max={180} step="any" defaultValue={job?.longitude ?? ''} placeholder="82.9204" />
-          <small>Заполняйте вместе с широтой.</small>
-        </label>
-      </div>
+      <label className="span">Ссылка на карту
+        <input name="map_url" type="url" inputMode="url" maxLength={2000} defaultValue={(job as Job & { map_url?: string | null })?.map_url || ''} placeholder="https://yandex.ru/maps/... или https://2gis.ru/..." />
+        <small>Администратор сам открывает нужное место в 2ГИС или Яндекс Картах, копирует ссылку и вставляет сюда. На сайте будет одна кнопка «Посмотреть карту».</small>
+      </label>
+
+      <label>Широта
+        <input type="number" name="latitude" min={-90} max={90} step="any" defaultValue={job?.latitude ?? ''} placeholder="Не требуется" />
+        <small>Необязательно. Можно оставить пустым, если используется ссылка на карту.</small>
+      </label>
+      <label>Долгота
+        <input type="number" name="longitude" min={-180} max={180} step="any" defaultValue={job?.longitude ?? ''} placeholder="Не требуется" />
+        <small>Необязательно. Можно оставить пустым, если используется ссылка на карту.</small>
+      </label>
 
       <label>Телефон
         <input name="contact_phone" type="tel" defaultValue={job?.contact_phone || ''} placeholder="Например: +7 900 000-00-00" />
