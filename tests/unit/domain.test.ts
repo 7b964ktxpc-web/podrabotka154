@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { build2GisUrl, buildYandexMapsUrl, fullAddress } from '../../lib/maps.ts';
-import { parseSalary, fingerprint, hasRole, localDay, readFilters, salaryLabel } from '../../lib/domain.ts';
+import { parseSalary, fingerprint, hasRole, isPriorityJobText, localDay, priorityLabel, readFilters, salaryLabel } from '../../lib/domain.ts';
 import { sign, verifySignature } from '../../lib/signature.ts';
 import { allowedPushEndpoint } from '../../services/push/safety.ts';
 const addresses = ['Новосибирск, ул. Большевистская, 45', 'Новосибирск, Красный проспект, 10', 'Новосибирск, ул. Ленина, 5, корпус 2', 'Томск, ул. Мира, 12/1', 'Омск, ул. Рабочая, 3 & 4'];
@@ -21,6 +21,8 @@ test('без единицы не угадываем', () => assert.equal(parseSa
 test('месячная оплата', () => assert.equal(parseSalary('60 000 рублей в месяц').salary_type, 'month'));
 test('обратный диапазон не угадываем', () => assert.equal(parseSalary('5000-4000 ₽').salary_min, null));
 test('неизвестная зарплата видна явно', () => assert.equal(salaryLabel({ salary_min: null, salary_max: null, salary_type: null }), 'Оплата не указана'));
+test('ближайшее — приоритет', () => { assert.equal(isPriorityJobText('НА БЛИЖАЙШЕЕ\nдо 17:30\nнужен 1 грузчик'), true); assert.equal(priorityLabel('ближайшее!'), '🔥 ПРИОРИТЕТ'); });
+test('обычная дата без срочности не приоритет', () => assert.equal(isPriorityJobText('На 12.09 нужен 1 грузчик в 15:00'), false));
 test('идентичные объявления дедуплицируются', () => assert.equal(fingerprint({ title: 'Грузчик', description: ' Нужен  грузчик ' }), fingerprint({ title: 'грузчик', description: 'Нужен грузчик' })));
 test('другой контакт не объединяется', () => assert.notEqual(fingerprint({ title: 'Грузчик', contact_phone: '1' }), fingerprint({ title: 'Грузчик', contact_phone: '2' })));
 test('другая дата не объединяется', () => assert.notEqual(fingerprint({ title: 'Грузчик', date_start: '2026-09-07' }), fingerprint({ title: 'Грузчик', date_start: '2026-09-08' })));
