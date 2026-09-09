@@ -113,11 +113,11 @@ export class ConservativeParser implements JobParser {
         result.payment_type = extractPaymentType(cleanText);
         result.employment_type = extractEmploymentType(cleanText);
         result.contact_telegram = cleanText.match(/(?:https?:\/\/t\.me\/|(?<![\w.%+-])@)([A-Za-z][A-Za-z0-9_]{4,31})\b/)?.[1] ?? null;
-        result.contact_phone = cleanText.match(/(?:\+?7|8)\s*\(?\d{3}\)?[\s-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}|(?:\+?7|8)\d{10}\b/)?.[0]?.replace(/[\s()-]/g, '') ?? null;
+        result.contact_phone = cleanText.match(/(?:\+?7|8)[\s-]*\(?\d{3}\)?[\s-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}|(?:\+?7|8)\d{10}\b/)?.[0]?.trim() ?? null;
         result.contact_email = cleanText.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/iu)?.[0] ?? null;
         result.address = extractAddress(cleanText);
         const evidence = [result.title, result.address, result.salary_min, result.contact_phone, result.contact_telegram, result.date_start, result.time_start].filter(Boolean).length;
-        result.confidence = Math.min(0.95, 0.2 + evidence * 0.1);
+        result.confidence = Math.min(0.49, 0.2 + evidence * 0.05);
         return result;
     }
 }
