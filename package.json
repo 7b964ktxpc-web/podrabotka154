@@ -16,6 +16,7 @@
     "worker:once": "tsx --env-file=.env.local worker/index.ts --once",
     "sandbox:pay": "tsx --env-file=.env.local scripts/sandbox-pay.ts",
     "admin": "tsx --env-file=.env.local scripts/admin.ts",
+    "import-public": "tsx scripts/import-public.ts",
     "keys": "web-push generate-vapid-keys --json"
   },
   "dependencies": {
