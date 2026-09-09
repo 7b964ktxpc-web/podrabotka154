@@ -11,16 +11,14 @@ export const jobSchema = z.object({
     salary_min: amount, salary_max: amount, salary_type: z.enum(['', 'shift', 'hour', 'month', 'task']).default(''), address_raw: optional(500), employment_type: optional(60), payment_type: z.enum(['', 'daily', 'immediate', 'weekly', 'monthly', 'other']).default(''),
     date_start: date, date_end: date, time_start: time, time_end: time, contact_phone: phone, contact_telegram: telegram, contact_email: z.string().email().or(z.literal('')).default('').transform(v => v || null), photo_url: url
 }).refine(p => p.salary_max === null || p.salary_min === null || p.salary_max >= p.salary_min, { message: 'Максимальная оплата меньше минимальной', path: ['salary_max'] })
-    .refine(p => !p.date_start || !p.date_end || p.date_end >= p.date_start, { message: 'Дата окончания раньше начала', path: ['date_end'] });
+    .refine(p => !p.date_start || !p.date_end || p.date_end >= p.date_start, { message: 'Дата окончания раньше начала', path: ['date_end'] })
+    .refine(p => !p.time_start || !p.time_end || p.time_end >= p.time_start, { message: 'Время окончания раньше начала', path: ['time_end'] });
 export const employerSchema = z.object({ name: z.string().trim().min(2).max(160), slug: z.string().regex(/^[a-z0-9][a-z0-9-]{2,70}$/), description: z.string().max(10000).default(''), city_id: z.string().uuid(), contact_phone: phone, contact_telegram: telegram, website: url, contact_person: optional(120), logo_url: url });
 export const credentials = z.object({ email: z.string().email().max(254), password: z.string().min(10).max(128) });
 export const productSchema = z.object({ id: z.string().uuid(), name: z.string().min(2).max(120), price_kopecks: z.coerce.number().int().min(0).max(100000000), days: z.coerce.number().int().min(1).max(365), priority: z.coerce.number().int().min(0).max(100), placements: z.coerce.number().int().min(0).max(10000), active: z.boolean() });
 export function friendly(error: unknown): string {
-    // Preserve framework redirects rather than turning login navigation into a form error.
-    if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT'))
-        throw error;
-    if (error instanceof z.ZodError)
-        return 'Проверьте поля: ' + error.issues.map(x => x.path.join('.') + ': ' + x.message).join('; ');
+    if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) throw error;
+    if (error instanceof z.ZodError) return 'Проверьте поля: ' + error.issues.map(x => x.path.join('.') + ': ' + x.message).join('; ');
     const msg = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
     if (msg.includes('MISSING_TITLE')) return 'Перед публикацией нужно указать название вакансии.';
     if (msg.includes('MISSING_ADDRESS')) return 'Перед публикацией нужно указать адрес.';
@@ -29,21 +27,13 @@ export function friendly(error: unknown): string {
     if (msg.includes('MISSING_DATE')) return 'Перед публикацией нужно указать дату начала.';
     if (msg.includes('MISSING_TIME')) return 'Перед публикацией нужно указать время начала. Для «Ближайшее» и «Срочно» точное время не обязательно.';
     if (msg.includes('INVALID_BATCH')) return 'Выберите от 1 до 100 объявлений.';
-    if (msg.includes('FREE_LIMIT'))
-        return 'Бесплатный лимит занят. Дождитесь завершения активной вакансии или используйте пакет размещений.';
-    if (msg.includes('EMPLOYER_REQUIRED'))
-        return 'Сначала заполните профиль работодателя.';
-    if (msg.includes('EXPIRED_DATE'))
-        return 'Дата окончания уже прошла.';
-    if (msg.includes('RATE_LIMIT'))
-        return 'Слишком много попыток. Подождите минуту.';
-    if (msg.includes('SEARCH_LIMIT'))
-        return 'Можно сохранить до 50 поисков. Удалите ненужный поиск.';
-    if (msg.includes('LAST_ADMIN'))
-        return 'Нельзя снять роль последнего администратора.';
-    if (msg.includes('800 КБ') || msg.includes('JPEG и PNG'))
-        return msg;
-    if (msg.includes('duplicate key'))
-        return 'Такая запись уже существует. Проверьте название или адрес страницы.';
+    if (msg.includes('FREE_LIMIT')) return 'Бесплатный лимит занят. Дождитесь завершения активной вакансии или используйте пакет размещений.';
+    if (msg.includes('EMPLOYER_REQUIRED')) return 'Сначала заполните профиль работодателя.';
+    if (msg.includes('EXPIRED_DATE')) return 'Дата окончания уже прошла.';
+    if (msg.includes('RATE_LIMIT')) return 'Слишком много попыток. Подождите минуту.';
+    if (msg.includes('SEARCH_LIMIT')) return 'Можно сохранить до 50 поисков. Удалите ненужный поиск.';
+    if (msg.includes('LAST_ADMIN')) return 'Нельзя снять роль последнего администратора.';
+    if (msg.includes('800 КБ') || msg.includes('JPEG и PNG')) return msg;
+    if (msg.includes('duplicate key')) return 'Такая запись уже существует. Проверьте название или адрес страницы.';
     return 'Не удалось выполнить действие. Проверьте данные и попробуйте ещё раз.';
 }
