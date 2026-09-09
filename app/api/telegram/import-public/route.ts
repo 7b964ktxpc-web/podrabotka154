@@ -12,8 +12,6 @@ const parser = createVacancyParser();
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
 
-  // This endpoint is intended for the scheduled importer only.
-  // Never leave it publicly callable when CRON_SECRET is missing.
   if (!cronSecret) {
     return NextResponse.json({ error: 'Cron is not configured' }, { status: 503 });
   }
@@ -32,6 +30,7 @@ export async function GET(request: Request) {
 
   for (const source of sources ?? []) {
     let adapter: PublicChannelAdapter | null = null;
+    let sourceFailed = 0;
     try {
       adapter = new PublicChannelAdapter(source.username, 20);
       await adapter.connect();
@@ -43,10 +42,9 @@ export async function GET(request: Request) {
       });
       if (saveError) throw saveError;
 
-      // The upsert RPC returns both existing and newly inserted messages.
-      // Only send new messages to the AI parser so the 15-minute cron does
-      // not repeatedly spend tokens on the same Telegram posts.
-      const newMessages = (saved ?? []).filter((message) => message.is_new);
+      // The upsert RPC returns only newly inserted messages.
+      // Existing Telegram posts are not sent to the AI parser again.
+      const newMessages = saved ?? [];
 
       let parsed = 0;
       for (const message of newMessages) {
@@ -63,6 +61,7 @@ export async function GET(request: Request) {
           processed++;
         } catch (e) {
           failed++;
+          sourceFailed++;
           console.error('Public Telegram parse failed', {
             source: source.username,
             messageId: message.id,
@@ -79,7 +78,7 @@ export async function GET(request: Request) {
         saved: saved?.length ?? 0,
         new: newMessages.length,
         parsed,
-        failed,
+        failed: sourceFailed,
       });
     } catch (e) {
       if (adapter) {
