@@ -40,3 +40,20 @@ test('не превращает неоднозначную запись 400/2 в
   assert.equal(result.salary_min, null);
   assert.equal(result.salary_max, null);
 });
+
+test('реальное объявление: ближайшее, время окончания, адрес со строением и ставка за час', async () => {
+  const parser = new EnhancedConservativeParser();
+  const result = await parser.parse(
+    'НА БЛИЖАЙШЕЕ\nдо 17:30\nнужен 1 человека 18+\nчукотская 2 строение 29\nпогрузка, разгрузка, работа на пандусе\n350 руб./час\nПишите Телеграм или звоните 89658271736',
+    { referenceDate: '2026-09-09T08:13:00+07:00' },
+  );
+
+  assert.equal(result.is_job, true);
+  assert.equal(result.time_start, null);
+  assert.equal(result.time_end, '17:30');
+  assert.equal(result.address, 'чукотская 2 строение 29');
+  assert.equal(result.salary_min, 350);
+  assert.equal(result.salary_max, 350);
+  assert.equal(result.salary_type, 'hour');
+  assert.equal(result.contact_phone, '89658271736');
+});
