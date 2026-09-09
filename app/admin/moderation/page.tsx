@@ -8,14 +8,15 @@ import { employmentLabel, isPriorityJobText, paymentLabel, priorityLabel, salary
 
 function value(v: unknown) { return v === null || v === undefined || v === '' ? '—' : String(v); }
 
-function reviewState(job: { title?: string | null; address_raw?: string | null; contact_phone?: string | null; contact_telegram?: string | null; salary_min?: number | null; salary_max?: number | null; date_start?: string | null; time_start?: string | null; ai_confidence?: number | null; }) {
+function reviewState(job: { title?: string | null; address_raw?: string | null; contact_phone?: string | null; contact_telegram?: string | null; salary_min?: number | null; salary_max?: number | null; date_start?: string | null; time_start?: string | null; ai_confidence?: number | null; }, priority: boolean) {
     const missing: string[] = [];
     if (!job.title?.trim()) missing.push('название');
     if (!job.address_raw?.trim()) missing.push('адрес');
     if (!job.contact_phone && !job.contact_telegram) missing.push('контакт');
     if (job.salary_min == null && job.salary_max == null) missing.push('оплата');
     if (!job.date_start) missing.push('дата');
-    if (!job.time_start) missing.push('время');
+    // «Ближайшее» намеренно может не содержать точного времени начала.
+    if (!job.time_start && !priority) missing.push('время');
     const confidence = typeof job.ai_confidence === 'number' ? Math.round(job.ai_confidence * 100) : null;
     return { missing, confidence };
 }
@@ -30,21 +31,23 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
         {jobs?.length ? <>
             <BulkModeration jobs={jobs.map(j => ({ id: j.id, title: j.title || 'Без названия' }))} />
             {jobs.map(j => {
-                const review = reviewState(j);
                 const title = j.title || 'Без названия';
-                const priority = priorityLabel(j.original_text || j.description || title);
+                const sourceText = j.original_text || j.description || title;
+                const priority = priorityLabel(sourceText);
+                const isPriority = isPriorityJobText(sourceText);
+                const review = reviewState(j, isPriority);
                 return <details key={j.id} open>
                     <summary>{priority ? `${priority} · ` : ''}{title} · {j.status}</summary>
                     <p className="small muted">Работодатель: {j.employers?.name || 'Не указан'} · confidence: {review.confidence === null ? 'не применяется' : `${review.confidence}%`} · {new Date(j.created_at).toLocaleString('ru-RU')}</p>
                     {review.missing.length > 0 && <p className="message" role="status">⚠️ Перед публикацией проверьте: {review.missing.join(', ')}.</p>}
                     <div className="panel" style={{ margin: '12px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
-                        <div><strong>Приоритет</strong><br />{isPriorityJobText(j.original_text || j.description || title) ? '🔥 Да — ближайшее / срочное' : 'Обычное'}</div>
+                        <div><strong>Приоритет</strong><br />{isPriority ? '🔥 Да — ближайшее / срочное' : 'Обычное'}</div>
                         <div><strong>Оплата</strong><br />{salaryLabel(j)}</div>
                         <div><strong>Способ оплаты</strong><br />{paymentLabel(j.payment_type) || '—'}</div>
                         <div><strong>Занятость</strong><br />{employmentLabel(j.employment_type) || '—'}</div>
                         <div><strong>Адрес</strong><br />{value(j.address_raw)}</div>
                         <div><strong>Дата</strong><br />{value(j.date_start)}</div>
-                        <div><strong>Время</strong><br />{j.time_start || j.time_end ? `${j.time_start ? `с ${j.time_start}` : ''}${j.time_start && j.time_end ? ' ' : ''}${j.time_end ? `до ${j.time_end}` : ''}` : (priority ? 'Ближайшее' : '—')}</div>
+                        <div><strong>Время</strong><br />{j.time_start || j.time_end ? `${j.time_start ? `с ${j.time_start}` : ''}${j.time_start && j.time_end ? ' ' : ''}${j.time_end ? `до ${j.time_end}` : ''}` : (isPriority ? 'Ближайшее' : '—')}</div>
                         <div><strong>Телефон</strong><br />{value(j.contact_phone)}</div>
                         <div><strong>Telegram</strong><br />{value(j.contact_telegram)}</div>
                     </div>
