@@ -34,11 +34,11 @@ export function parseSalary(text: string): Pick<ParsedJob, 'salary_min' | 'salar
 export function isPriorityJobText(text: string | null | undefined): boolean {
     if (!text) return false;
     const normalized = text.toLocaleLowerCase('ru').replace(/ё/g, 'е');
-    return /\b(?:на\s+)?ближайш(?:ее|ий|ая|ую)\b/iu.test(normalized)
-        || /\bсрочно\b/iu.test(normalized)
-        || /\bсейчас\b/iu.test(normalized)
-        || /\bнемедленно\b/iu.test(normalized)
-        || /\bна\s+сегодня\b/iu.test(normalized);
+    const boundary = '(?:^|[^\\p{L}\\p{N}_])';
+    const endBoundary = '(?=$|[^\\p{L}\\p{N}_])';
+    return new RegExp(`${boundary}(?:на\\s+)?ближайш(?:ее|ий|ая|ую)${endBoundary}`, 'iu').test(normalized)
+        || new RegExp(`${boundary}(?:срочно|сейчас|немедленно)${endBoundary}`, 'iu').test(normalized)
+        || new RegExp(`${boundary}на\\s+сегодня${endBoundary}`, 'iu').test(normalized);
 }
 
 export function priorityLabel(text: string | null | undefined): string | null {
