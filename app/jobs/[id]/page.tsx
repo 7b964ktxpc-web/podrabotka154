@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/db';
 import { check } from '@/lib/service-db';
-import { salaryLabel } from '@/lib/domain';
+import { isPriorityJobText, priorityLabel, salaryLabel } from '@/lib/domain';
 import { Address } from '@/components/job-card';
 import { Contact, Favorite, Share, ViewEvent } from '@/components/job-interactions';
 import type { Job } from '@/lib/types';
@@ -40,6 +40,8 @@ export default async function Detail({ params }: { params: Promise<{ id: string 
     const rawTelegram = j.contact_telegram?.trim().replace(/^@/, '') || '';
     const tg = /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(rawTelegram) ? rawTelegram : null;
     const email = j.contact_email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(j.contact_email) ? j.contact_email : null;
+    const priority = priorityLabel(j.original_text || j.description || j.title);
+    const isPriority = isPriorityJobText(j.original_text || j.description || j.title);
     const structured = e && j.address_raw ? {
         '@context': 'https://schema.org',
         '@type': 'JobPosting',
@@ -58,9 +60,10 @@ export default async function Detail({ params }: { params: Promise<{ id: string 
         <div className="detail">
             <article>
                 <p className="eyebrow">{j.source_type === 'employer' ? 'От работодателя' : 'Источник: ' + (j.source_type === 'telegram' ? 'Telegram' : 'редакция')}</p>
+                {isPriority && <p className="message" role="status">{priority || '🔥 Ближайшее'} — приоритетное объявление</p>}
                 <h1>{j.title}</h1>
                 <p className="salary">{salaryLabel(j)}</p>
-                <div className="meta"><span>Дата: {j.date_start || 'не указана'}{j.date_end ? ' по ' + j.date_end : ''}</span><span>Время: {j.time_start?.slice(0, 5) || 'не указано'}{j.time_end ? ' - ' + j.time_end.slice(0, 5) : ''}</span></div>
+                <div className="meta"><span>Дата: {j.date_start || 'не указана'}{j.date_end ? ' по ' + j.date_end : ''}</span><span>Время: {j.time_start?.slice(0, 5) || (isPriority ? 'ближайшее' : 'не указано')}{j.time_end ? ' - ' + j.time_end.slice(0, 5) : ''}</span></div>
                 <hr className="divider" />
                 <h2>Что нужно делать</h2>
                 <p className="description">{j.description}</p>
