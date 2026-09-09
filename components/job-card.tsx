@@ -4,9 +4,9 @@ import { employmentLabel, paymentLabel, salaryLabel } from '@/lib/domain';
 import { build2GisUrl, buildYandexMapsUrl, fullAddress } from '@/lib/maps';
 import { Favorite } from './job-interactions';
 
-export function Address({ job }: { job: Pick<Job, 'city' | 'address_raw' | 'address_normalized'>; }) {
+export function Address({ job }: { job: Pick<Job, 'city' | 'address_raw' | 'address_normalized' | 'map_url'>; }) {
     const address = fullAddress(job.city, job.address_normalized || job.address_raw);
-    return <><p className="address">📍 {address || 'Адрес не указан'}</p>{address && <div className="map-links"><a href={build2GisUrl(address)} target="_blank" rel="noopener noreferrer">Открыть в 2ГИС ↗</a><a href={buildYandexMapsUrl(address)} target="_blank" rel="noopener noreferrer">Яндекс Карты ↗</a></div>}</>;
+    return <><p className="address">📍 {address || 'Адрес не указан'}</p>{address && <div className="map-links"><a href={build2GisUrl(address)} target="_blank" rel="noopener noreferrer">Открыть в 2ГИС ↗</a><a href={buildYandexMapsUrl(address)} target="_blank" rel="noopener noreferrer">Яндекс Карты ↗</a></div>}{job.map_url && <div className="map-links"><a className="button" href={job.map_url} target="_blank" rel="noopener noreferrer">Посмотреть карту ↗</a></div>}</>;
 }
 
 export function JobCard({ job, saved = false, preview = false }: { job: Job; saved?: boolean; preview?: boolean; }) {
