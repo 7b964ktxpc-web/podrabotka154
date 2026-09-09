@@ -13,7 +13,7 @@ const NAMED_STREET_WITH_NUMBER = new RegExp('(?:^|[^А-Яа-яЁёA-Za-z])([А-�
 const STREET_NAME_WITH_TYPE = new RegExp('(?:^|[^А-Яа-яЁёA-Za-z])([А-ЯЁа-яё][а-яё-]{3,39}\\s+(?:улица|ул\\.))\\s*,?\\s*(?:д\\.?\\s*)?\\d{1,4}[А-Яа-яA-Za-z]?(?:[/\\-]\\d{1,4})?'+BUILDING_SUFFIX, 'iu');
 const STREET_WITHOUT_NUMBER = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?)\s+[А-Яа-яЁёA-Za-z-]{3,40}(?:\s+[А-Яа-яЁёA-Za-z-]{2,40})?/iu;
 const CITY_ADDRESS = new RegExp('^(?:[А-Яа-яЁёA-Za-z -]{3,40},\\s*\\d{1,4}[А-Яа-яA-Za-z]?(?:[/\\-]\\d{1,4})?'+BUILDING_SUFFIX+'|(?:Новосибирск|Краснообск|Бердск|Обь)\\s+\\d{1,4}[А-Яа-яA-Za-z]?(?:[/\\-]\\d{1,4})?'+BUILDING_SUFFIX+')$', 'iu');
-const DATE_TIME = /(?:дата\s*:\s*)?(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})(?:\s+(\d{1,2})[:.](\d{2}))?/iu;
+const DATE_TIME = /(?:дата\s*:\s*)?(\d{1,2})[./](\d{1,2})[./](\d{4}|\d{2})(?!\d)(?:\s+(\d{1,2})[:.](\d{2}))?/iu;
 const TIME = /\b(\d{1,2})[:.](\d{2})\b/u;
 const ROLE_WORDS = /(?:требуется|нужен|нужна|нужны|ищем|грузчик[аи]?|курьер|водитель|помощник|работник|человек|чел\.)/iu;
 const GENERIC_ADDRESS_WORDS = /(?:ближайшее|ближайший|срочно|подработка|работа|смена|сегодня|завтра)/iu;
@@ -57,8 +57,8 @@ function extractDateTime(text: string, context?: ParseContext): Pick<ParsedJob, 
         const year = dateMatch[3].length === 2 ? `20${dateMatch[3]}` : dateMatch[3];
         date_start = `${year}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`;
         if (dateMatch[4] && dateMatch[5]) time_start = `${dateMatch[4].padStart(2, '0')}:${dateMatch[5]}`;
-    } else if (/\bсегодня\b/iu.test(text)) date_start = localDateFromReference(context, 0);
-    else if (/\bзавтра\b/iu.test(text)) date_start = localDateFromReference(context, 1);
+    } else if (/(?:^|[^А-Яа-яЁё])сегодня(?:$|[^А-Яа-яЁё])/iu.test(text)) date_start = localDateFromReference(context, 0);
+    else if (/(?:^|[^А-Яа-яЁё])завтра(?:$|[^А-Яа-яЁё])/iu.test(text)) date_start = localDateFromReference(context, 1);
     for (const match of timeMatches) { const time = `${match[1].padStart(2, '0')}:${match[2]}`; const prefix = match[0].trim().toLocaleLowerCase('ru'); if (prefix.startsWith('до')) time_end = time; else if (!time_start) time_start = time; }
     if (!time_start) {
         const bare = text.split(/\r?\n/).map(x => x.trim()).find(line => TIME.test(line) && line.length <= 12 && !/^(?:с|от|к|до|на)\s*\d{1,2}[:.]\d{2}$/iu.test(line));
@@ -113,9 +113,18 @@ export class ConservativeParser implements JobParser {
         result.payment_type = extractPaymentType(cleanText);
         result.employment_type = extractEmploymentType(cleanText);
         result.contact_telegram = cleanText.match(/(?:https?:\/\/t\.me\/|(?<![\w.%+-])@)([A-Za-z][A-Za-z0-9_]{4,31})\b/)?.[1] ?? null;
-        result.contact_phone = cleanText.match(/(?:\+?7|8)[ (\-]*\d{3}[ )\-]*\d{3}[ \-]*\d{2}[ \-]*\d{2}(?!\d)/)?.[0] ?? null;
-        result.contact_email = cleanText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? null;
-        result.address = extractAddress(cleanText); result.confidence = 0.35; return result;
+        result.contact_phone = cleanText.match(/(?:\+?7|8)\s*\(?\d{3}\)?[\s-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}|(?:\+?7|8)\d{10}\b/)?.[0]?.replace(/[\s()-]/g, '') ?? null;
+        result.contact_email = cleanText.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/iu)?.[0] ?? null;
+        result.address = extractAddress(cleanText);
+        const evidence = [result.title, result.address, result.salary_min, result.contact_phone, result.contact_telegram, result.date_start, result.time_start].filter(Boolean).length;
+        result.confidence = Math.min(0.95, 0.2 + evidence * 0.1);
+        return result;
     }
 }
-export class ProviderJobParser implements JobParser { private provider: AIProvider; constructor(provider: AIProvider) { this.provider = provider; } parse(text: string) { return this.provider.extract(text); } }
+
+export function createVacancyParser(): JobParser {
+    if (process.env.PARSER_PROVIDER === 'ai' || process.env.AI_PARSER_ENABLED === 'true') {
+        return new (require('./agent.ts').AIVacancyAgent)();
+    }
+    return new ConservativeParser();
+}
