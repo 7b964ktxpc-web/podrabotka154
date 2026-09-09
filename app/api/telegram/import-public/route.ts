@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { fingerprint } from '@/lib/domain';
 import { createVacancyParser } from '@/services/ai/agent';
 import { PublicChannelAdapter } from '@/services/telegram';
+import { geocodeAddress } from '@/services/geocoder';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,10 +28,13 @@ export async function GET(request: Request) {
   const results: Array<Record<string, unknown>> = [];
   let processed = 0;
   let failed = 0;
+  let geocoded = 0;
+  let geocodeFailed = 0;
 
   for (const source of sources ?? []) {
     let adapter: PublicChannelAdapter | null = null;
     let sourceFailed = 0;
+    let sourceGeocoded = 0;
     try {
       adapter = new PublicChannelAdapter(source.username, 20);
       await adapter.connect();
@@ -42,21 +46,49 @@ export async function GET(request: Request) {
       });
       if (saveError) throw saveError;
 
-      // The upsert RPC returns only newly inserted messages.
-      // Existing Telegram posts are not sent to the AI parser again.
       const newMessages = saved ?? [];
-
       let parsed = 0;
+
       for (const message of newMessages) {
         try {
           const parsedJob = await parser.parse(message.message_text);
-          checkPublicResult(
+          const stored = checkPublicResult(
             await client.rpc('store_public_telegram_parsed', {
               p_message: message.id,
               p_result: parsedJob,
               p_fingerprint: fingerprint({ ...parsedJob, city: null }),
             }),
           );
+
+          const jobId = stored.data;
+          if (jobId && parsedJob.address) {
+            try {
+              const geo = await geocodeAddress(parsedJob.address, source.city);
+              if (geo) {
+                const { error: geoError } = await client
+                  .from('jobs')
+                  .update({
+                    latitude: geo.latitude,
+                    longitude: geo.longitude,
+                    location_precision: geo.precision,
+                  })
+                  .eq('id', jobId)
+                  .eq('source_type', 'telegram');
+
+                if (geoError) throw geoError;
+                geocoded++;
+                sourceGeocoded++;
+              }
+            } catch (e) {
+              geocodeFailed++;
+              console.error('Public Telegram geocoding failed', {
+                source: source.username,
+                messageId: message.id,
+                error: e instanceof Error ? e.message : 'Unknown geocoding error',
+              });
+            }
+          }
+
           parsed++;
           processed++;
         } catch (e) {
@@ -79,6 +111,7 @@ export async function GET(request: Request) {
         new: newMessages.length,
         parsed,
         failed: sourceFailed,
+        geocoded: sourceGeocoded,
       });
     } catch (e) {
       if (adapter) {
@@ -89,10 +122,14 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, results, queue: { processed, failed } });
+  return NextResponse.json({
+    ok: true,
+    results,
+    queue: { processed, failed, geocoded, geocodeFailed },
+  });
 }
 
-function checkPublicResult<T extends { error: unknown }>(result: T): T {
+function checkPublicResult<T extends { error: unknown; data?: unknown }>(result: T): T {
   if (result.error) throw result.error;
   return result;
 }
