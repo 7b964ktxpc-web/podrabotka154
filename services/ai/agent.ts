@@ -1,5 +1,6 @@
 import type { JobParser } from './index.ts';
 import { ConservativeParser } from './index.ts';
+import { EnhancedConservativeParser } from './enhanced-parser.ts';
 import type { ParsedJob } from '../../lib/domain.ts';
 
 const SYSTEM_PROMPT = `Ты ИИ-агент разбора вакансий для сервиса Подработка 154.
@@ -101,7 +102,7 @@ function sourceHasNumber(text: string, value: number): boolean {
   const compact = String(value).replace(/\.0+$/, '');
   const escaped = compact.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const spaced = compact.replace(/(?<=\d)(?=(\d{3})+$)/g, '[ .,_]?');
-  const pattern = new RegExp(`(?<!\\d)${escaped}(?!\\d)|(?<!\\d)${spaced}(?!\\d)`, 'u');
+  const pattern = new RegExp(`(?<!\\\\d)${escaped}(?!\\\\d)|(?<!\\\\d)${spaced}(?!\\\\d)`, 'u');
   return pattern.test(text.replace(/\u00a0/g, ' '));
 }
 
@@ -138,7 +139,6 @@ function sourceHasTime(text: string, value: string): boolean {
   const [hour, minute] = value.split(':');
   const source = text.replace(/\u00a0/g, ' ');
   const h = Number(hour);
-  const m = Number(minute);
   const variants = [
     `${hour}:${minute}`, `${hour}.${minute}`, `${hour} ${minute}`,
     `${h}:${minute}`, `${h}.${minute}`, `${h} ${minute}`,
@@ -146,7 +146,6 @@ function sourceHasTime(text: string, value: string): boolean {
   return variants.some(item => source.includes(item));
 }
 
-/** Remove AI values that cannot be grounded in the original Telegram text. */
 export function groundAiResult(result: ParsedJob, sourceText: string): ParsedJob {
   const out = { ...result };
   let removed = 0;
@@ -175,7 +174,7 @@ function parseJson(text: string) {
 }
 
 export class AIVacancyAgent implements JobParser {
-  private fallback = new ConservativeParser();
+  private fallback = new EnhancedConservativeParser();
 
   async parse(text: string): Promise<ParsedJob> {
     if (!hasAiConfig()) return this.fallback.parse(text);
@@ -207,5 +206,5 @@ export class AIVacancyAgent implements JobParser {
 
 export function createVacancyParser(): JobParser {
   if (process.env.PARSER_PROVIDER === 'ai' || process.env.AI_PARSER_ENABLED === 'true') return new AIVacancyAgent();
-  return new ConservativeParser();
+  return new EnhancedConservativeParser();
 }
