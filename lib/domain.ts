@@ -42,7 +42,15 @@ export function isPriorityJobText(text: string | null | undefined): boolean {
 }
 
 export function priorityLabel(text: string | null | undefined): string | null {
-    return isPriorityJobText(text) ? '🔥 ПРИОРИТЕТ' : null;
+    if (!text) return null;
+    const normalized = text.toLocaleLowerCase('ru').replace(/ё/g, 'е');
+    const boundary = '(?:^|[^\\p{L}\\p{N}_])';
+    const endBoundary = '(?=$|[^\\p{L}\\p{N}_])';
+    if (new RegExp(`${boundary}(?:на\\s+)?ближайш(?:ее|ий|ая|ую)${endBoundary}`, 'iu').test(normalized)) return '🔥 БЛИЖАЙШЕЕ';
+    if (new RegExp(`${boundary}срочно${endBoundary}`, 'iu').test(normalized)) return '⚡ СРОЧНО';
+    if (new RegExp(`${boundary}(?:сейчас|немедленно)${endBoundary}`, 'iu').test(normalized)) return '⚡ СЕЙЧАС';
+    if (new RegExp(`${boundary}на\\s+сегодня${endBoundary}`, 'iu').test(normalized)) return '🔥 НА СЕГОДНЯ';
+    return null;
 }
 
 export function fingerprint(job: Partial<ParsedJob>): string {
