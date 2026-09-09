@@ -60,15 +60,18 @@ export async function GET(request: Request) {
 
       await adapter.disconnect();
       adapter = null;
+      await client.from('telegram_sources').update({ last_error: null }).eq('id', source.id);
       results.push({ source: source.username, fetched: messages.length, saved: saved?.length ?? 0, new_messages: newMessages.length, parsed });
     } catch (e) {
       if (adapter) {
         try { await adapter.disconnect(); } catch { /* ignore cleanup errors */ }
       }
       const message = e instanceof Error ? e.message : 'Unknown import error';
+      await client.from('telegram_sources').update({ last_error: message.slice(0, 1000) }).eq('id', source.id);
       results.push({ source: source.username, error: message });
     }
   }
 
-  return NextResponse.json({ ok: true, results, queue: { processed, failed } });
+  const sourceFailures = results.filter((result) => typeof result.error === 'string').length;
+  return NextResponse.json({ ok: sourceFailures === 0, results, queue: { processed, failed }, source_failures: sourceFailures });
 }
