@@ -23,16 +23,14 @@ export default async function Favorites({ searchParams }: {
     });
 
     return <>
-        <div className="page-head">
-            <div>
-                <p className="eyebrow">Твои вакансии</p>
-                <h1>Избранное</h1>
-                <p className="lead">Сохраняй подходящие объявления, чтобы быстро вернуться к ним.</p>
-            </div>
+        <div className="hero">
+            <p className="eyebrow">Твои вакансии</p>
+            <h1>Избранное</h1>
+            <p className="lead">Сохраняй подходящие объявления, чтобы быстро вернуться к ним.</p>
             <Link className="button primary" href="/jobs">Найти подработку</Link>
         </div>
-        {active.length ? <section className="favorites-list" aria-label="Сохранённые вакансии">{active.map(f => <JobCard key={f.job_id} job={f.jobs as unknown as Job} saved/>)}</section> : <div className="empty favorite-empty"><h2>В избранном пока пусто</h2><p>Нажми на сердечко у подходящей вакансии — она появится здесь.</p><Link className="button primary" href="/jobs">Перейти к вакансиям →</Link></div>}
-        {unavailable.length > 0 && <details className="unavailable-favorites"><summary>Недоступные объявления ({unavailable.length})</summary><div className="data-list">{unavailable.map(f => <div key={f.job_id} className="data-row row"><span>Вакансия больше недоступна</span><Favorite id={f.job_id} initial/></div>)}</div></details>}
+        {active.length ? <section aria-label="Сохранённые вакансии">{active.map(f => <JobCard key={f.job_id} job={f.jobs as unknown as Job} saved/>)}</section> : <div className="empty"><h2>В избранном пока пусто</h2><p>Нажми на сердечко у подходящей вакансии — она появится здесь.</p><Link className="button primary" href="/jobs">Перейти к вакансиям →</Link></div>}
+        {unavailable.length > 0 && <details><summary>Недоступные объявления ({unavailable.length})</summary><div className="data-list">{unavailable.map(f => <div key={f.job_id} className="data-row row"><span>Вакансия больше недоступна</span><Favorite id={f.job_id} initial/></div>)}</div></details>}
         <nav className="pagination" aria-label="Страницы">{p > 1 && <Link className="button" href={'?page=' + (p - 1)}>← Назад</Link>}{(count || 0) > p * 20 && <Link className="button primary" href={'?page=' + (p + 1)}>Дальше →</Link>}</nav>
     </>;
 }
