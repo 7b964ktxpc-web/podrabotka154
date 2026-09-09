@@ -7,6 +7,8 @@ export type Job = {
     category: string | null;
     address_raw: string | null;
     address_normalized: string | null;
+    latitude: number | null;
+    longitude: number | null;
     salary_min: number | null;
     salary_max: number | null;
     salary_type: string | null;
