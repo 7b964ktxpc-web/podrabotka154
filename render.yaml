@@ -17,3 +17,16 @@ services:
         sync: false
       - key: CRON_SECRET
         sync: false
+
+  - type: cron
+    name: podrabotka154-public-telegram-import
+    runtime: node
+    branch: main
+    buildCommand: npm install
+    startCommand: npm run import-public
+    schedule: "*/15 * * * *"
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
