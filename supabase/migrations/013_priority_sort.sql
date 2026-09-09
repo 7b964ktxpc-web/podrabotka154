@@ -25,6 +25,5 @@ create or replace function search_jobs(f jsonb) returns table(job jsonb,total bi
 $$;
 
 grant select on job_promotions to anon;
-create policy if not exists visible on job_promotions for select using(ends_at>now());
 
 commit;
