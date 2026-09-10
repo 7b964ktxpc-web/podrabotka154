@@ -21,8 +21,8 @@ export function appUrl() {
   const configuredUrl = read('NEXT_PUBLIC_APP_URL');
   if (configuredUrl) return configuredUrl.replace(/\/$/, '');
 
-  const vercelUrl = read('VERCEL_PROJECT_PRODUCTION_URL') || read('VERCEL_URL');
-  if (vercelUrl) return `https://${vercelUrl}`.replace(/\/$/, '');
+  const renderUrl = read('RENDER_EXTERNAL_URL');
+  if (renderUrl) return renderUrl.replace(/\/$/, '');
 
   return 'http://localhost:3000';
 }
