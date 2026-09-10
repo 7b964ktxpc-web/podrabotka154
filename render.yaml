@@ -3,6 +3,7 @@ services:
     name: podrabotka154
     runtime: node
     branch: main
+    plan: free
     buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /
@@ -17,22 +18,3 @@ services:
         sync: false
       - key: CRON_SECRET
         generateValue: true
-
-  - type: cron
-    name: podrabotka154-public-telegram-import
-    runtime: node
-    branch: main
-    buildCommand: npm install
-    startCommand: npm run import-public
-    schedule: "*/15 * * * *"
-    envVars:
-      - key: APP_HOST
-        fromService:
-          name: podrabotka154
-          type: web
-          property: host
-      - key: CRON_SECRET
-        fromService:
-          name: podrabotka154
-          type: web
-          envVarKey: CRON_SECRET
