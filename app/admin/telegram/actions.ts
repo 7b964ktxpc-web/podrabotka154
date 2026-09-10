@@ -54,8 +54,12 @@ export async function saveTelegramSource(_: ActionState, form: FormData): Promis
         await rate('telegram-source:' + user.id, 20, 300);
         const raw = sourceSchema.parse(Object.fromEntries(form));
         const username = normalizeUsername(raw.channel_url);
-        const id = form.get('id') ? z.string().uuid().parse(form.get('id')) : crypto.randomUUID();
         const db = serviceDb();
+        const requestedId = form.get('id') ? z.string().uuid().parse(form.get('id')) : null;
+
+        const existing = check(await db.from('telegram_sources').select('id').eq('username', username).limit(1));
+        const id = requestedId || existing.data?.[0]?.id || crypto.randomUUID();
+
         check(await db.from('telegram_sources').upsert({
             id,
             name: `@${username}`,
@@ -66,12 +70,12 @@ export async function saveTelegramSource(_: ActionState, form: FormData): Promis
             active: true,
             last_error: null,
         }));
-        check(await db.from('admin_logs').insert({ actor_id: user.id, action: 'source_update', target_id: id, details: { adapter: 'public_web', username } }));
+        check(await db.from('admin_logs').insert({ actor_id: user.id, action: 'source_update', target_id: id, details: { adapter: 'public_web', username, duplicate_reused: Boolean(existing.data?.length && !requestedId) } }));
 
         try {
             const result = await importLatest(id, username);
             revalidatePath('/admin/telegram');
-            return { ok: `Канал подключён: получено ${result.fetched}, новых сообщений ${result.inserted}. Они поставлены в очередь на парсинг.` };
+            return { ok: `Канал подключён: получено ${result.fetched}, новых сообщений ${result.inserted}.` };
         } catch (e) {
             const error = friendly(e);
             await db.from('telegram_sources').update({ last_error: error }).eq('id', id);
