@@ -2,7 +2,7 @@
 
 MVP сервиса поиска подработок, первый город — Новосибирск.
 
-**Текущая схема размещения:** Web на Render + Supabase, автоматический импорт публичных Telegram-каналов запускается GitHub Actions и обращается к защищённому endpoint приложения. Vercel и Netlify в текущей схеме не используются.
+**Текущая схема размещения:** Web на Render + Supabase, автоматический импорт публичных Telegram-каналов и обработка очереди запускаются GitHub Actions. Vercel и Netlify в текущей схеме не используются.
 
 ## Начать локально
 
@@ -46,7 +46,19 @@ npm run dev
 - `PODRABOTKA154_APP_URL` — HTTPS-адрес приложения Render;
 - `PODRABOTKA154_CRON_SECRET` — то же значение, что `CRON_SECRET` в Render.
 
-GitHub Actions допускает расписание начиная с интервала 5 минут; запуск по расписанию идёт в UTC и может задерживаться самим GitHub. citeturn0search0turn0search2
+## Уведомления и Web Push
+
+Публикация вакансии создаёт задачу `notify_job`, которая подбирает пользователей с подходящими сохранёнными поисками. Затем для их Push-подписок создаются задачи отправки. Это обрабатывает бесплатный workflow `.github/workflows/notifications-worker.yml` каждые 5 минут и также вручную через `workflow_dispatch`.
+
+Для него нужны GitHub Repository Secrets:
+
+- `PODRABOTKA154_SUPABASE_URL`
+- `PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY`
+- `PODRABOTKA154_PUSH_PUBLIC_KEY`
+- `PODRABOTKA154_PUSH_PRIVATE_KEY`
+- `PODRABOTKA154_PUSH_SUBJECT`
+
+`PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY` используется только внутри GitHub Actions и не должен попадать в браузер или клиентский код.
 
 ## Render
 
@@ -60,8 +72,6 @@ GitHub Actions допускает расписание начиная с инт�
 - `CRON_SECRET`
 
 `CRON_SECRET` генерируется Render в Blueprint-конфигурации.
-
-Бесплатный Render подходит для MVP/тестирования: Web Service может засыпать после 15 минут без входящего трафика и просыпаться примерно за минуту. citeturn0search4
 
 ## Проверки
 
