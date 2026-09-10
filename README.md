@@ -35,7 +35,7 @@ npm run dev
 
 ## Telegram-импорт
 
-`.github/workflows/import-public.yml` запускается по расписанию в минуты `7,22,37,52` каждого часа и вручную через `workflow_dispatch`. GitHub Actions вызывает:
+`.github/workflows/import-public.yml` запускается каждые 5 минут, начиная с 7-й минуты каждого часа (`7-57/5`), и вручную через `workflow_dispatch`. GitHub Actions вызывает:
 
 `GET /api/telegram/import-public`
 
