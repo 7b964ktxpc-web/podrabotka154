@@ -56,7 +56,7 @@ Authorization: Bearer <CRON_SECRET>
 
 ### Важный порядок настройки
 
-1. Создать Supabase и применить миграции `001…020`.
+1. Создать Supabase и применить миграции `001…021`.
 2. Создать Render Web Service из репозитория.
 3. Заполнить Supabase-переменные и VAPID-переменные.
 4. Получить URL Render и убедиться, что `/api/health` отвечает `200`.
@@ -84,6 +84,8 @@ Authorization: Bearer <CRON_SECRET>
 Миграции `018_search_filters.sql` и `019_search_sort.sql` синхронизируют SQL-поиск с фильтрами интерфейса и сохранёнными поисками.
 
 Миграция `020_lock_public_import_rpc.sql` ограничивает публичные Telegram-import RPC только `service_role`; это обязательная security-миграция и она должна применяться вместе с остальными миграциями.
+
+Миграция `021_extend_queue_lock.sql` увеличивает lease очереди `claim_work` до 10 минут. Это предотвращает повторный захват задания другим worker, если текущий запуск ещё работает в пределах своего 5-минутного GitHub Actions timeout.
 
 ## Уведомления
 
