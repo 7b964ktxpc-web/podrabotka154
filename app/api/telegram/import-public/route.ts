@@ -83,7 +83,9 @@ export async function GET(request: Request) {
         try { await adapter.disconnect(); } catch { /* ignore cleanup errors */ }
       }
       const message = e instanceof Error ? e.message : 'Unknown import error';
-      results.push({ source: source.username, error: message });
+      failed++;
+      sourceFailed++;
+      results.push({ source: source.username, error: message, failed: sourceFailed });
     }
   }
 
