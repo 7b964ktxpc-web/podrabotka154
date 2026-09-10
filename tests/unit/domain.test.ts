@@ -24,6 +24,12 @@ test('локальная дата на границе суток', () => assert.
 test('завтра на границе месяца', () => assert.equal(localDay(new Date('2026-09-30T10:00:00Z'), 1), '2026-10-01'));
 test('параметры поиска не портят диапазон', () => { const f = readFilters({ q: ' грузчик ', min: '-100', page: '-4', address: '1', employer: '0' }); assert.equal(f.q, 'грузчик'); assert.equal(f.min, null); assert.equal(f.page, 1); assert.equal(f.address, true); assert.equal(f.employer, false); });
 test('минимум и дата фильтра', () => { const f = readFilters({ min: '4000', day: '2026-09-07' }); assert.equal(f.min, 4000); assert.equal(f.day, '2026-09-07'); });
+test('сортировка принимает только поддерживаемые значения', () => {
+    assert.equal(readFilters({ sort: 'recent' }).sort, 'recent');
+    assert.equal(readFilters({ sort: 'salary_desc' }).sort, 'salary_desc');
+    assert.equal(readFilters({ sort: 'salary_asc' }).sort, 'salary_asc');
+    assert.equal(readFilters({ sort: 'unknown' }).sort, 'relevance');
+});
 test('корректная подпись webhook', () => { const ts = String(Math.floor(Date.now() / 1000)); assert.ok(verifySignature('body', ts, sign('body', ts, 'secret'), 'secret')); });
 test('подмена тела webhook', () => { const ts = String(Math.floor(Date.now() / 1000)); assert.equal(verifySignature('changed', ts, sign('body', ts, 'secret'), 'secret'), false); });
 test('просроченная подпись', () => assert.equal(verifySignature('body', '1', sign('body', '1', 'secret'), 'secret'), false));
