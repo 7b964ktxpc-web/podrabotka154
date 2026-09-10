@@ -5,9 +5,14 @@ on:
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
+concurrency:
+  group: public-telegram-import
+  cancel-in-progress: false
+
 jobs:
   import:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Import public Telegram vacancies
         env:
@@ -18,5 +23,7 @@ jobs:
           test -n "$APP_URL"
           test -n "$CRON_SECRET"
           curl --fail --silent --show-error --location \
+            --retry 3 --retry-delay 10 --retry-all-errors \
+            --connect-timeout 20 --max-time 480 \
             --header "Authorization: Bearer $CRON_SECRET" \
             "$APP_URL/api/telegram/import-public"
