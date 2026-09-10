@@ -16,6 +16,11 @@ async function load(id: string) {
     return data as Job;
 }
 
+function dateLabel(value: string | null) {
+    if (!value) return 'не указана';
+    return new Date(value + 'T12:00:00Z').toLocaleDateString('ru-RU');
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const j = await load(id);
@@ -60,7 +65,7 @@ export default async function Detail({ params }: { params: Promise<{ id: string 
                 <p className="eyebrow">{j.source_type === 'employer' ? 'От работодателя' : 'Источник: ' + (j.source_type === 'telegram' ? 'Telegram' : 'редакция')}</p>
                 <h1>{j.title}</h1>
                 <p className="salary">{salaryLabel(j)}</p>
-                <div className="meta"><span>Дата: {j.date_start || 'не указана'}{j.date_end ? ' по ' + j.date_end : ''}</span><span>Время: {j.time_start?.slice(0, 5) || 'не указано'}{j.time_end ? ' - ' + j.time_end.slice(0, 5) : ''}</span></div>
+                <div className="meta"><span>Дата: {dateLabel(j.date_start)}{j.date_end ? ' по ' + dateLabel(j.date_end) : ''}</span><span>Время: {j.time_start?.slice(0, 5) || 'не указано'}{j.time_end ? ' - ' + j.time_end.slice(0, 5) : ''}</span></div>
                 <hr className="divider" />
                 <h2>Что нужно делать</h2>
                 <p className="description">{j.description}</p>
