@@ -44,5 +44,5 @@ jobs:
           PUSH_PRIVATE_KEY: ${{ secrets.PODRABOTKA154_PUSH_PRIVATE_KEY }}
           PUSH_SUBJECT: ${{ secrets.PODRABOTKA154_PUSH_SUBJECT }}
           PARSER_PROVIDER: conservative
-          WORKER_BATCH_SIZE: 20
+          WORKER_BATCH_SIZE: 50
         run: npm run worker:once
