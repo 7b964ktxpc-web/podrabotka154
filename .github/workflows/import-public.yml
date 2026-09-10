@@ -22,6 +22,10 @@ jobs:
           set -euo pipefail
           test -n "$APP_URL"
           test -n "$CRON_SECRET"
+          case "$APP_URL" in
+            https://*) ;;
+            *) echo "PODRABOTKA154_APP_URL must use HTTPS" >&2; exit 1 ;;
+          esac
           curl --fail --silent --show-error --location \
             --retry 4 \
             --retry-delay 5 \
