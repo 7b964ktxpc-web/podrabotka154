@@ -1,5 +1,8 @@
 name: checks
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -10,7 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install (commit a reviewed lockfile after first network install)
+      - name: Install dependencies
         run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
       - run: npm run typecheck
       - run: npm test
