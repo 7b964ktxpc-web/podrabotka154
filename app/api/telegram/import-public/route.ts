@@ -1,14 +1,9 @@
-import { NextResponse } from 'next/server';
-import { fingerprint } from '@/lib/domain';
-import { createVacancyParser } from '@/services/ai/agent';
 import { PublicChannelAdapter } from '@/services/telegram';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import { serviceDb, check } from '@/lib/service-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const parser = createVacancyParser();
 
 export async function GET(request: Request) {
   const auth = authorizeCronRequest(request, process.env.CRON_SECRET);
@@ -24,7 +19,7 @@ export async function GET(request: Request) {
   const { data: sources } = check(await client.rpc('list_public_telegram_sources'));
 
   const results: Array<Record<string, unknown>> = [];
-  let processed = 0;
+  let queued = 0;
   let failed = 0;
 
   for (const source of sources ?? []) {
@@ -41,28 +36,7 @@ export async function GET(request: Request) {
       }));
 
       const newMessages = saved ?? [];
-      let parsed = 0;
-
-      for (const message of newMessages) {
-        try {
-          const parsedJob = await parser.parse(message.message_text);
-          check(await client.rpc('store_public_telegram_parsed', {
-            p_message: message.id,
-            p_result: parsedJob,
-            p_fingerprint: fingerprint({ ...parsedJob, city: null }),
-          }));
-          parsed++;
-          processed++;
-        } catch (e) {
-          failed++;
-          sourceFailed++;
-          console.error('Public Telegram parse failed', {
-            source: source.username,
-            messageId: message.id,
-            error: e instanceof Error ? e.message : 'Unknown parse error',
-          });
-        }
-      }
+      queued += newMessages.length;
 
       await adapter.disconnect();
       adapter = null;
@@ -71,7 +45,7 @@ export async function GET(request: Request) {
         fetched: messages.length,
         saved: saved?.length ?? 0,
         new: newMessages.length,
-        parsed,
+        queued: newMessages.length,
         failed: sourceFailed,
       });
     } catch (e) {
@@ -88,7 +62,7 @@ export async function GET(request: Request) {
   const body = {
     ok: failed === 0,
     results,
-    queue: { processed, failed },
+    queue: { queued, failed },
   };
 
   return Response.json(body, { status: failed === 0 ? 200 : 502 });
