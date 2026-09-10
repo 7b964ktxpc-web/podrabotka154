@@ -7,7 +7,7 @@ MVP сервиса поиска подработок, первый город �
 ## Начать локально
 
 1. Создайте Supabase-проект и настройте `.env.local` по [SETUP.md](SETUP.md).
-2. Примените SQL-миграции `001…019` и `supabase/seed.sql`.
+2. Примените SQL-миграции `001…020` и `supabase/seed.sql`.
 3. Установите зависимости и запустите проверки:
 
 ```sh
@@ -82,7 +82,7 @@ npm run dev
 - `PUSH_PRIVATE_KEY`
 - `PUSH_SUBJECT`
 
-`CRON_SECRET` генерируется Render в Blueprint-конфигурации; остальные секреты задаются вручную.
+`CRON_SECRET` генерируется Render в Blueprint-конфигурации; после создания сервиса его значение нужно скопировать в GitHub Secret `PODRABOTKA154_CRON_SECRET`.
 
 ## Проверки
 
