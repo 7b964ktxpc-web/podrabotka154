@@ -41,9 +41,9 @@ async function processWork(kind: string, p: Record<string, string>) {
 async function tick() {
     check(await c.rpc('expire_jobs'));
     const batch = Math.min(50, Math.max(1, Number(process.env.WORKER_BATCH_SIZE) || 10));
-    for (let index = 0; index < batch && !stopping; index++) {
-        const { data: items } = check(await c.rpc('claim_work', { batch: 1 }));
-        const item = items?.[0]; if (!item) break;
+    const { data: items } = check(await c.rpc('claim_work', { batch }));
+    for (const item of items ?? []) {
+        if (stopping) break;
         try { await processWork(item.kind, item.payload); check(await c.from('work_queue').update({ done_at: new Date().toISOString(), locked_until: null, error: null }).eq('id', item.id).eq('lock_token', item.lock_token)); }
         catch (e) {
             const error = e instanceof Error ? e.message : 'Worker error'; console.error('Work item failed', item.id, item.kind);
