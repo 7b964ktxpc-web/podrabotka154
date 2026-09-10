@@ -20,7 +20,8 @@ export default async function Telegram() {
         else if (message.parse_status === 'error') status.error++;
     }
 
-    const defaultCityId = cities?.[0]?.id ?? '';
+    const defaultCity = cities?.find(c => c.name.trim().toLowerCase() === 'новосибирск') ?? cities?.[0];
+    const defaultCityId = defaultCity?.id ?? '';
 
     function form(s?: Record<string, string | boolean>) {
         const username = String(s?.username || '');
@@ -29,6 +30,7 @@ export default async function Telegram() {
             <input type="hidden" name="city_id" value={String(s?.city_id || defaultCityId)}/>
             <input type="hidden" name="adapter" value="public_web"/>
             <label>Ссылка на Telegram-канал<input name="channel_url" required defaultValue={username ? `https://t.me/${username}` : ''} placeholder="https://t.me/rabota154NsK"/><small>Просто вставь ссылку на открытый канал. Можно также вставить @username.</small></label>
+            {!s?.id && <p className="small muted">Город по умолчанию: {defaultCity?.name || 'не настроен'}</p>}
             {s?.id && <p className="small muted">Канал: @{username} · город: {cities?.find(c => c.id === s.city_id)?.name || 'не указан'}</p>}
         </ActionForm>;
     }
