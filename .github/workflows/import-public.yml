@@ -1,0 +1,22 @@
+name: import public Telegram
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Import public Telegram vacancies
+        env:
+          APP_URL: ${{ secrets.PODRABOTKA154_APP_URL }}
+          CRON_SECRET: ${{ secrets.PODRABOTKA154_CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$APP_URL"
+          test -n "$CRON_SECRET"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/telegram/import-public"
