@@ -7,7 +7,7 @@ MVP сервиса поиска подработок, первый город �
 ## Начать локально
 
 1. Создайте Supabase-проект и настройте `.env.local` по [SETUP.md](SETUP.md).
-2. Примените SQL-миграции `001…017` и `supabase/seed.sql`.
+2. Примените SQL-миграции `001…019` и `supabase/seed.sql`.
 3. Установите зависимости и запустите проверки:
 
 ```sh
@@ -58,6 +58,14 @@ npm run dev
 - `PODRABOTKA154_PUSH_PRIVATE_KEY`
 - `PODRABOTKA154_PUSH_SUBJECT`
 
+Для самого Render Web Service также нужны:
+
+- `PUSH_PUBLIC_KEY`
+- `PUSH_PRIVATE_KEY`
+- `PUSH_SUBJECT`
+
+`PUSH_PUBLIC_KEY` используется сервером для передачи публичного VAPID-ключа браузеру. `PUSH_PRIVATE_KEY` и `PUSH_SUBJECT` остаются серверными секретами. Значения пары VAPID в Render и GitHub Actions должны соответствовать одной паре ключей.
+
 `PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY` используется только внутри GitHub Actions и не должен попадать в браузер или клиентский код.
 
 ## Render
@@ -70,8 +78,11 @@ npm run dev
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `CRON_SECRET`
+- `PUSH_PUBLIC_KEY`
+- `PUSH_PRIVATE_KEY`
+- `PUSH_SUBJECT`
 
-`CRON_SECRET` генерируется Render в Blueprint-конфигурации.
+`CRON_SECRET` генерируется Render в Blueprint-конфигурации; остальные секреты задаются вручную.
 
 ## Проверки
 
