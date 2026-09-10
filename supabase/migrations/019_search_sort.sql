@@ -37,6 +37,4 @@ language sql stable set search_path=public as $$
  limit 20 offset (greatest(1,least(1000,coalesce((f->>'page')::int,1)))-1)*20
 $$;
 
-grant execute on function search_jobs(jsonb) to authenticated,anon;
-
 commit;
