@@ -26,6 +26,9 @@ as $$
   returning *;
 $$;
 
+-- claim_work is a privileged worker operation. Do not expose the SECURITY DEFINER
+-- function to browser roles even if a previous migration granted PUBLIC execute.
+revoke execute on function public.claim_work(integer) from public, anon, authenticated;
 grant execute on function public.claim_work(integer) to service_role;
 
 commit;
