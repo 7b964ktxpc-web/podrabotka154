@@ -18,3 +18,9 @@ services:
         sync: false
       - key: CRON_SECRET
         generateValue: true
+      - key: PUSH_PUBLIC_KEY
+        sync: false
+      - key: PUSH_PRIVATE_KEY
+        sync: false
+      - key: PUSH_SUBJECT
+        sync: false
