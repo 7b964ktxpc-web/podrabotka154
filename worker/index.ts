@@ -15,10 +15,16 @@ if (pushReady) webpush.setVapidDetails(env('PUSH_SUBJECT'), env('PUSH_PUBLIC_KEY
 async function processWork(kind: string, p: Record<string, string>) {
     if (kind === 'parse') {
         const { data: m } = check(await c.from('telegram_messages').select('*').eq('id', p.message_id).single());
+        const { data: s } = check(await c.from('telegram_sources').select('adapter,city_id,cities(name)').eq('id', m.source_id).single());
+        if (s?.adapter === 'public_web' && m.parse_status === 'processed') return;
         const result = await parser.parse(m.message_text);
-        const { data: s } = check(await c.from('telegram_sources').select('city_id,cities(name)').eq('id', m.source_id).single());
-        const city = (s.cities as unknown as { name: string })?.name ?? null;
-        check(await c.rpc('store_parsed', { p_message: m.id, p_result: result, p_fingerprint: fingerprint({ ...result, city }) }));
+        const city = (s?.cities as unknown as { name: string })?.name ?? null;
+        const params = { p_message: m.id, p_result: result, p_fingerprint: fingerprint({ ...result, city }) };
+        if (s?.adapter === 'public_web') {
+            check(await c.rpc('store_public_telegram_parsed', params));
+        } else {
+            check(await c.rpc('store_parsed', params));
+        }
         return;
     }
     if (kind === 'notify_job') { check(await c.rpc('notify_job', { p_job: p.job_id })); return; }
