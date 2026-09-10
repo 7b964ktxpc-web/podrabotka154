@@ -40,7 +40,7 @@ async function processWork(kind: string, p: Record<string, string>) {
 }
 async function tick() {
     check(await c.rpc('expire_jobs'));
-    const batch = Math.min(20, Math.max(1, Number(process.env.WORKER_BATCH_SIZE) || 10));
+    const batch = Math.min(50, Math.max(1, Number(process.env.WORKER_BATCH_SIZE) || 10));
     for (let index = 0; index < batch && !stopping; index++) {
         const { data: items } = check(await c.rpc('claim_work', { batch: 1 }));
         const item = items?.[0]; if (!item) break;
