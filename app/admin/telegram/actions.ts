@@ -16,17 +16,15 @@ function normalizeUsername(value: string): string {
     v = v.replace(/^s\//i, '');
     v = v.split(/[?#]/, 1)[0].replace(/\/$/, '');
     if (!/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(v)) {
-        throw new Error('Укажите username публичного Telegram-канала: @channel, t.me/channel или channel');
+        throw new Error('Укажите ссылку на публичный Telegram-канал: https://t.me/channel или @channel');
     }
     return v;
 }
 
 const sourceSchema = z.object({
-    name: z.string().trim().min(2).max(160),
-    username: z.string().trim().min(1).max(200),
+    channel_url: z.string().trim().min(1).max(200),
     city_id: z.string().uuid(),
-    adapter: z.enum(['manual', 'bot', 'public_web']),
-    chat_id: z.string().regex(/^-?\d+$/).or(z.literal('')).transform(v => v || null),
+    adapter: z.literal('public_web'),
 });
 
 async function importLatest(sourceId: string, username: string) {
@@ -55,35 +53,31 @@ export async function saveTelegramSource(_: ActionState, form: FormData): Promis
         const { user } = await requireAdmin();
         await rate('telegram-source:' + user.id, 20, 300);
         const raw = sourceSchema.parse(Object.fromEntries(form));
-        const username = normalizeUsername(raw.username);
+        const username = normalizeUsername(raw.channel_url);
         const id = form.get('id') ? z.string().uuid().parse(form.get('id')) : crypto.randomUUID();
         const db = serviceDb();
         check(await db.from('telegram_sources').upsert({
             id,
-            name: raw.name,
+            name: `@${username}`,
             username,
             city_id: raw.city_id,
-            adapter: raw.adapter,
-            chat_id: raw.chat_id,
-            active: form.get('active') === 'on',
+            adapter: 'public_web',
+            chat_id: null,
+            active: true,
             last_error: null,
         }));
-        check(await db.from('admin_logs').insert({ actor_id: user.id, action: 'source_update', target_id: id, details: { adapter: raw.adapter, username } }));
+        check(await db.from('admin_logs').insert({ actor_id: user.id, action: 'source_update', target_id: id, details: { adapter: 'public_web', username } }));
 
-        if (raw.adapter === 'public_web' && form.get('active') === 'on') {
-            try {
-                const result = await importLatest(id, username);
-                revalidatePath('/admin/telegram');
-                return { ok: `Источник сохранён. Канал доступен: получено ${result.fetched}, новых сообщений ${result.inserted}. Они поставлены в очередь на парсинг.` };
-            } catch (e) {
-                const error = friendly(e);
-                await db.from('telegram_sources').update({ last_error: error }).eq('id', id);
-                revalidatePath('/admin/telegram');
-                return { ok: `Источник сохранён, но проверить канал сейчас не удалось: ${error}` };
-            }
+        try {
+            const result = await importLatest(id, username);
+            revalidatePath('/admin/telegram');
+            return { ok: `Канал подключён: получено ${result.fetched}, новых сообщений ${result.inserted}. Они поставлены в очередь на парсинг.` };
+        } catch (e) {
+            const error = friendly(e);
+            await db.from('telegram_sources').update({ last_error: error }).eq('id', id);
+            revalidatePath('/admin/telegram');
+            return { ok: `Канал сохранён, но проверить его сейчас не удалось: ${error}` };
         }
-        revalidatePath('/admin/telegram');
-        return { ok: 'Источник сохранён.' };
     } catch (e) {
         return { error: friendly(e) };
     }
@@ -93,9 +87,7 @@ export async function testTelegramSource(_: ActionState, form: FormData): Promis
     try {
         const { user } = await requireAdmin();
         await rate('telegram-source-test:' + user.id, 10, 300);
-        const adapter = z.enum(['manual', 'bot', 'public_web']).parse(form.get('adapter'));
-        if (adapter !== 'public_web') return { error: 'Для бесплатной проверки выберите «Публичная страница Telegram».' };
-        const username = normalizeUsername(String(form.get('username') || ''));
+        const username = normalizeUsername(String(form.get('channel_url') || form.get('username') || ''));
         const sourceId = z.string().uuid().parse(form.get('id'));
         const result = await importLatest(sourceId, username);
         revalidatePath('/admin/telegram');
