@@ -10,15 +10,14 @@ grant execute on function public.list_public_telegram_sources() to service_role;
 grant execute on function public.upsert_public_telegram_messages(uuid, jsonb) to service_role;
 grant execute on function public.store_public_telegram_parsed(uuid, jsonb, text) to service_role;
 
--- Return only rows actually inserted by this import. Previously the function
--- returned every incoming message already present in telegram_messages and
--- always reported is_new=false, making the importer report misleading queue
--- counts and making the RPC harder to reason about.
+-- Return only rows actually inserted by this import. Keep the return type
+-- identical to migration 013 because PostgreSQL cannot change a function's
+-- return row type with CREATE OR REPLACE FUNCTION.
 create or replace function public.upsert_public_telegram_messages(
   p_source_id uuid,
   p_messages jsonb
 )
-returns table(id uuid, telegram_message_id bigint, message_text text, message_date timestamptz, message_url text, raw_payload jsonb, is_new boolean)
+returns table(id uuid, telegram_message_id bigint, message_text text, message_date timestamptz, message_url text, is_new boolean)
 language plpgsql
 security definer
 set search_path = public
@@ -47,9 +46,9 @@ begin
     where i.telegram_message_id is not null and i.message_text is not null and i.message_date is not null
     on conflict (source_id, telegram_message_id) do nothing
     returning telegram_messages.id, telegram_messages.telegram_message_id, telegram_messages.message_text,
-              telegram_messages.message_date, telegram_messages.message_url, telegram_messages.raw_payload
+              telegram_messages.message_date, telegram_messages.message_url
   )
-  select i.id, i.telegram_message_id, i.message_text, i.message_date, i.message_url, i.raw_payload, true
+  select i.id, i.telegram_message_id, i.message_text, i.message_date, i.message_url, true
   from inserted i
   order by i.telegram_message_id desc;
 end;
