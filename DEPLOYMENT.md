@@ -25,6 +25,9 @@ SUPABASE_URL=...
 SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 CRON_SECRET=<Render generates this value>
+PUSH_PUBLIC_KEY=...
+PUSH_PRIVATE_KEY=...
+PUSH_SUBJECT=...
 ```
 
 После создания сервиса нужен его HTTPS-адрес. Этот адрес используется как значение GitHub Secret `PODRABOTKA154_APP_URL`.
@@ -53,12 +56,12 @@ Authorization: Bearer <CRON_SECRET>
 
 ### Важный порядок настройки
 
-1. Создать Supabase и применить миграции `001…019`.
+1. Создать Supabase и применить миграции `001…020`.
 2. Создать Render Web Service из репозитория.
-3. Заполнить Supabase-переменные.
+3. Заполнить Supabase-переменные и VAPID-переменные.
 4. Получить URL Render и убедиться, что `/api/health` отвечает `200`.
 5. Взять сгенерированный Render `CRON_SECRET`.
-6. Добавить два GitHub Secrets из раздела выше.
+6. Добавить два GitHub Secrets из раздела выше, используя **точно то же значение** `CRON_SECRET`.
 7. Запустить `import-public.yml` вручную один раз.
 8. Проверить результат в админке Telegram и затем оставить расписание включённым.
 
@@ -79,6 +82,8 @@ Authorization: Bearer <CRON_SECRET>
 - сортировку по релевантности, новизне и оплате.
 
 Миграции `018_search_filters.sql` и `019_search_sort.sql` синхронизируют SQL-поиск с фильтрами интерфейса и сохранёнными поисками.
+
+Миграция `020_lock_public_import_rpc.sql` ограничивает публичные Telegram-import RPC только `service_role`; это обязательная security-миграция и она должна применяться вместе с остальными миграциями.
 
 ## Уведомления
 
