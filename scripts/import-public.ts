@@ -11,7 +11,7 @@ if (!cronSecret) {
   throw new Error("CRON_SECRET is not configured");
 }
 
-const response = await fetch(`http://${appHost}/api/telegram/import-public`, {
+const response = await fetch(`https://${appHost}/api/telegram/import-public`, {
   method: "GET",
   headers: {
     authorization: `Bearer ${cronSecret}`,
