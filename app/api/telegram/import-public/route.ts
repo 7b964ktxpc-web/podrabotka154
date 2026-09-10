@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { fingerprint } from '@/lib/domain';
 import { createVacancyParser } from '@/services/ai/agent';
 import { PublicChannelAdapter } from '@/services/telegram';
 import { authorizeCronRequest } from '@/lib/cron-auth';
+import { serviceDb, check } from '@/lib/service-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,15 +14,14 @@ export async function GET(request: Request) {
   const auth = authorizeCronRequest(request, process.env.CRON_SECRET);
 
   if (!auth.ok) {
-    return NextResponse.json(
+    return Response.json(
       { error: auth.status === 503 ? 'Cron is not configured' : 'Unauthorized' },
       { status: auth.status },
     );
   }
 
-  const client = await db();
-  const { data: sources, error } = await client.rpc('list_public_telegram_sources');
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const client = serviceDb();
+  const { data: sources } = check(await client.rpc('list_public_telegram_sources'));
 
   const results: Array<Record<string, unknown>> = [];
   let processed = 0;
@@ -36,11 +35,10 @@ export async function GET(request: Request) {
       await adapter.connect();
       const messages = await adapter.fetchMessages();
 
-      const { data: saved, error: saveError } = await client.rpc('upsert_public_telegram_messages', {
+      const { data: saved } = check(await client.rpc('upsert_public_telegram_messages', {
         p_source_id: source.id,
         p_messages: messages,
-      });
-      if (saveError) throw saveError;
+      }));
 
       const newMessages = saved ?? [];
       let parsed = 0;
@@ -48,13 +46,11 @@ export async function GET(request: Request) {
       for (const message of newMessages) {
         try {
           const parsedJob = await parser.parse(message.message_text);
-          checkPublicResult(
-            await client.rpc('store_public_telegram_parsed', {
-              p_message: message.id,
-              p_result: parsedJob,
-              p_fingerprint: fingerprint({ ...parsedJob, city: null }),
-            }),
-          );
+          check(await client.rpc('store_public_telegram_parsed', {
+            p_message: message.id,
+            p_result: parsedJob,
+            p_fingerprint: fingerprint({ ...parsedJob, city: null }),
+          }));
           parsed++;
           processed++;
         } catch (e) {
@@ -89,14 +85,9 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({
+  return Response.json({
     ok: true,
     results,
     queue: { processed, failed },
   });
-}
-
-function checkPublicResult<T extends { error: unknown; data?: unknown }>(result: T): T {
-  if (result.error) throw result.error;
-  return result;
 }
