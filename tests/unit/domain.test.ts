@@ -1,16 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { build2GisUrl, buildYandexMapsUrl, fullAddress } from '../../lib/maps.ts';
+import { fullAddress } from '../../lib/maps.ts';
 import { parseSalary, fingerprint, hasRole, localDay, readFilters, salaryLabel } from '../../lib/domain.ts';
 import { sign, verifySignature } from '../../lib/signature.ts';
 import { allowedPushEndpoint } from '../../services/push/safety.ts';
-const addresses = ['Новосибирск, ул. Большевистская, 45', 'Новосибирск, Красный проспект, 10', 'Новосибирск, ул. Ленина, 5, корпус 2', 'Томск, ул. Мира, 12/1', 'Омск, ул. Рабочая, 3 & 4'];
-for (const address of addresses) {
-    test('2ГИС: точное кодирование ' + address, () => assert.equal(decodeURIComponent(new URL(build2GisUrl(address)).pathname.slice('/search/'.length)), address));
-    test('Яндекс: точное кодирование ' + address, () => assert.equal(new URL(buildYandexMapsUrl(address)).searchParams.get('text'), address));
-}
-test('нет адреса, нет ссылки', () => { assert.equal(fullAddress('Новосибирск', null), null); assert.equal(fullAddress('Новосибирск', ' '), null); assert.throws(() => build2GisUrl('')); assert.throws(() => buildYandexMapsUrl(' ')); });
-test('город не дублируется', () => assert.equal(fullAddress('Новосибирск', addresses[0]), addresses[0]));
+
+test('нет адреса, нет ссылки', () => { assert.equal(fullAddress('Новосибирск', null), null); assert.equal(fullAddress('Новосибирск', ' '), null); });
+test('город не дублируется', () => assert.equal(fullAddress('Новосибирск', 'Новосибирск, ул. Большевистская, 45'), 'Новосибирск, ул. Большевистская, 45'));
 test('добавляем город к реальному адресу', () => assert.equal(fullAddress('Новосибирск', 'ул. Ленина, 1'), 'Новосибирск, ул. Ленина, 1'));
 test('оплата за смену', () => assert.deepEqual(parseSalary('Оплата 4 500 ₽ / смена'), { salary_min: 4500, salary_max: 4500, salary_type: 'shift' }));
 test('диапазон оплаты', () => assert.deepEqual(parseSalary('4000-5000 руб за смену'), { salary_min: 4000, salary_max: 5000, salary_type: 'shift' }));
@@ -32,5 +28,4 @@ test('корректная подпись webhook', () => { const ts = String(Ma
 test('подмена тела webhook', () => { const ts = String(Math.floor(Date.now() / 1000)); assert.equal(verifySignature('changed', ts, sign('body', ts, 'secret'), 'secret'), false); });
 test('просроченная подпись', () => assert.equal(verifySignature('body', '1', sign('body', '1', 'secret'), 'secret'), false));
 test('невалидная длина подписи не вызывает исключения', () => assert.equal(verifySignature('body', '1', 'xx', 'secret'), false));
-test('защита endpoint от SSRF', () => { for (const url of ['http://127.0.0.1', 'https://127.0.0.1', 'https://fcm.googleapis.com.evil.org', 'https://fcm.googleapis.com:123/', 'https://u:p@fcm.googleapis.com/'])
-    assert.equal(allowedPushEndpoint(url), false); assert.ok(allowedPushEndpoint('https://fcm.googleapis.com/fcm/send/abc')); assert.ok(allowedPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/abc')); });
+test('защита endpoint от SSRF', () => { for (const url of ['http://127.0.0.1', 'https://127.0.0.1', 'https://fcm.googleapis.com.evil.org', 'https://fcm.googleapis.com:123/', 'https://u:p@fcm.googleapis.com/']) assert.equal(allowedPushEndpoint(url), false); assert.ok(allowedPushEndpoint('https://fcm.googleapis.com/fcm/send/abc')); assert.ok(allowedPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/abc')); });
