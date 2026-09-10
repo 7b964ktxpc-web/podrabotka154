@@ -85,9 +85,11 @@ export async function GET(request: Request) {
     }
   }
 
-  return Response.json({
-    ok: true,
+  const body = {
+    ok: failed === 0,
     results,
     queue: { processed, failed },
-  });
+  };
+
+  return Response.json(body, { status: failed === 0 ? 200 : 502 });
 }
