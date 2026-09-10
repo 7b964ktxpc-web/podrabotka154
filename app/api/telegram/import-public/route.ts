@@ -24,7 +24,6 @@ export async function GET(request: Request) {
 
   for (const source of sources ?? []) {
     let adapter: PublicChannelAdapter | null = null;
-    let sourceFailed = 0;
     try {
       adapter = new PublicChannelAdapter(source.username, 20);
       await adapter.connect();
@@ -36,6 +35,8 @@ export async function GET(request: Request) {
       }));
 
       const newMessages = saved ?? [];
+      // INSERT on telegram_messages fires the database enqueue_message trigger.
+      // The worker owns parsing; this route must never parse synchronously.
       queued += newMessages.length;
 
       await adapter.disconnect();
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
         saved: saved?.length ?? 0,
         new: newMessages.length,
         queued: newMessages.length,
-        failed: sourceFailed,
+        failed: 0,
       });
     } catch (e) {
       if (adapter) {
@@ -54,16 +55,9 @@ export async function GET(request: Request) {
       }
       const message = e instanceof Error ? e.message : 'Unknown import error';
       failed++;
-      sourceFailed++;
-      results.push({ source: source.username, error: message, failed: sourceFailed });
+      results.push({ source: source.username, error: message, failed: 1 });
     }
   }
 
-  const body = {
-    ok: failed === 0,
-    results,
-    queue: { queued, failed },
-  };
-
-  return Response.json(body, { status: failed === 0 ? 200 : 502 });
+  return Response.json({ ok: failed === 0, results, queue: { queued, failed } }, { status: failed === 0 ? 200 : 502 });
 }
