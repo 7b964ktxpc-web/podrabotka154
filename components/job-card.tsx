@@ -1,12 +1,21 @@
 import Link from 'next/link';
 import type { Job } from '@/lib/types';
 import { employmentLabel, paymentLabel, salaryLabel } from '@/lib/domain';
-import { fullAddress } from '@/lib/maps';
+import { fullAddress, mapLinks } from '@/lib/maps';
 import { Favorite } from './job-interactions';
 
 export function Address({ job }: { job: Pick<Job, 'city' | 'address_raw' | 'address_normalized' | 'map_url'>; }) {
     const address = fullAddress(job.city, job.address_normalized || job.address_raw);
-    return <><p className="address">📍 {address || 'Адрес не указан'}</p>{job.map_url && <div className="map-links"><a className="button" href={job.map_url} target="_blank" rel="noopener noreferrer">Посмотреть карту ↗</a></div>}</>;
+    const links = mapLinks(job.city, job.address_normalized || job.address_raw);
+    return <>
+        <p className="address">📍 {address || 'Адрес не указан'}</p>
+        {address && <div className="map-links">
+            {job.map_url ? <a className="button" href={job.map_url} target="_blank" rel="noopener noreferrer">Посмотреть карту ↗</a> : <>
+                <a className="button" href={links!.yandex} target="_blank" rel="noopener noreferrer">Яндекс Карты ↗</a>
+                <a className="button" href={links!.twoGis} target="_blank" rel="noopener noreferrer">2ГИС ↗</a>
+            </>}
+        </div>}
+    </>;
 }
 
 function postedLabel(value: string | null) {
