@@ -79,7 +79,6 @@ export default async function Detail({ params }: { params: Promise<{ id: string 
                 <hr className="divider" />
                 <h2>Место работы</h2>
                 <Address job={j} />
-                {j.map_url && <p><a className="button" href={j.map_url} target="_blank" rel="noopener noreferrer">Посмотреть карту ↗</a></p>}
                 {e && <p>Работодатель: <Link href={'/employers/' + e.slug}>{e.name}</Link></p>}
                 <p className="small muted">Опубликовано на «Подработка 154»: {j.published_at ? new Date(j.published_at).toLocaleString('ru-RU') : 'не указано'}</p>
                 <div className="row">{(sources?.length ? sources : j.source_url ? [{ source_url: j.source_url }] : []).filter(x => /^https:\/\/t\.me\//.test(x.source_url)).map(x => <a key={x.source_url} className="small" href={x.source_url} target="_blank" rel="noopener noreferrer">Оригинал в Telegram ↗</a>)}</div>
