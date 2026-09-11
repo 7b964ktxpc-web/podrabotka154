@@ -28,5 +28,5 @@ jobs:
       - name: Import public Telegram directly into Supabase
         env:
           PODRABOTKA154_SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
-          PODRABOTKA154_SUPABASE_ANON_KEY: ${{ secrets.PODRABOTKA154_SUPABASE_ANON_KEY }}
+          PODRABOTKA154_SUPABASE_KEY: ${{ secrets.PODRABOTKA154_SUPABASE_ANON_KEY || secrets.PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run import-public
