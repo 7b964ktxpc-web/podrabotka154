@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { check } from '@/lib/service-db';
+import { AdminImportButton } from '@/components/admin-import-button';
 
 export default async function Admin() {
   const { client } = await requireAdmin();
@@ -24,8 +25,8 @@ export default async function Admin() {
           <p className="eyebrow">Администрирование</p>
           <h1>Обзор сервиса</h1>
         </div>
-        <div className="row" style={{ gap: 8 }}>
-          <Link href="/api/telegram/import-public" className="button">Импорт Telegram ↻</Link>
+        <div className="row" style={{ gap: 8, alignItems: 'start' }}>
+          <AdminImportButton />
           <Link href="/admin/moderation" className="button primary">
             Модерация{pendingCount ? ` · ${pendingCount}` : ''}
           </Link>
