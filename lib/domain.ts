@@ -20,6 +20,8 @@ export function parseSalary(text: string): Pick<ParsedJob, 'salary_min' | 'salar
         const type = /(?:за|\/)\s*(?:смен[ау]|день)/iu.test(nearby) ? 'shift' : /(?:за|\/)\s*час/iu.test(nearby) ? 'hour' : /(?:за|в|\/)\s*месяц/iu.test(nearby) ? 'month' : null;
         return { salary_min: upper && second === null ? null : first, salary_max: second ?? (lower ? null : first), salary_type: type };
     }
+
+    // Common Telegram shorthand: "2800/8h" explicitly means a shift.
     const shift = text.match(/(?<![\d.,])(?:\b(от|до)\s+)?(\d{2,7})(?:[,.](\d{1,2}))?\s*\/\s*(\d{1,2})\s*(?:h|ч(?:ас(?:а|ов)?)?|часа?)\b/iu);
     if (shift) {
         const amount = Number(`${shift[2]}${shift[3] ? `.${shift[3]}` : ''}`);
@@ -28,6 +30,36 @@ export function parseSalary(text: string): Pick<ParsedJob, 'salary_min' | 'salar
         const lower = /^\s*от\s/iu.test(shift[0]) || /от\s+\d/iu.test(prefix);
         const upper = /^\s*до\s/iu.test(shift[0]) || /до\s+\d/iu.test(prefix);
         return { salary_min: upper ? null : amount, salary_max: lower || upper ? null : amount, salary_type: 'shift' };
+    }
+
+    // Telegram often omits the currency sign: "Ставка 2800", "Ставка 3300 смена".
+    // Only accept this form when an explicit pay cue is on the same line, avoiding
+    // false positives from weights, addresses, times and worker counts.
+    for (const line of text.split(/\r?\n/)) {
+        if (!/(?:ставка|оплата|заплатим|расч[её]т|стоимость|гонорар)/iu.test(line)) continue;
+        const cue = line.match(/(?:ставка|оплата|заплатим|расч[её]т|стоимость|гонорар)[^\d]{0,18}(?:от\s+|до\s+)?(\d{2,7})(?:[,.](\d{1,2}))?/iu);
+        if (!cue) continue;
+        const amount = Number(`${cue[1]}${cue[2] ? `.${cue[2]}` : ''}`);
+        if (!Number.isFinite(amount) || amount < 100 || amount > 100000) continue;
+        const before = line.slice(0, cue.index ?? 0);
+        const after = line.slice((cue.index ?? 0) + cue[0].length);
+        const lower = /от\s*$/iu.test(before);
+        const upper = /до\s*$/iu.test(before);
+        const type = /(?:смен[ау]|день)/iu.test(after) ? 'shift' : /(?:час|\/\s*\d+)/iu.test(after) ? 'hour' : null;
+        return { salary_min: upper ? null : amount, salary_max: lower || upper ? null : amount, salary_type: type };
+    }
+
+    // Short task-style forms such as "400/2" or "400\\2" are accepted only when
+    // the line explicitly contains a pay cue; the unit remains unknown rather than
+    // inventing an hourly/shift interpretation.
+    for (const line of text.split(/\r?\n/)) {
+        if (!/(?:ставка|оплата|расч[её]т)/iu.test(line)) continue;
+        const shorthand = line.match(/(?<![\d.,])(\d{2,7})\s*[\\/]\s*\d{1,2}(?!\d)/u);
+        if (!shorthand) continue;
+        const amount = Number(shorthand[1]);
+        if (Number.isFinite(amount) && amount >= 100 && amount <= 100000) {
+            return { salary_min: amount, salary_max: amount, salary_type: null };
+        }
     }
     return unknown;
 }
