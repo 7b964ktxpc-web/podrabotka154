@@ -1,4 +1,4 @@
-import { parseSalary, type ParsedJob } from '../../lib/domain.ts';
+import { localDay, parseSalary, type ParsedJob } from '../../lib/domain.ts';
 
 export interface AIProvider { extract(text: string): Promise<ParsedJob>; }
 export interface JobParser { parse(text: string): Promise<ParsedJob>; }
@@ -36,6 +36,9 @@ function extractDateTime(text: string): Pick<ParsedJob, 'date_start' | 'date_end
     const timeMatches = [...text.matchAll(/(?:^|\n|\s)(?:с|от|к|до|на)\s*(\d{1,2})[:.](\d{2})\b/giu)];
     let date_start: string | null = null, time_start: string | null = null, time_end: string | null = null;
     if (dateMatch) { date_start = `${dateMatch[3]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`; if (dateMatch[4] && dateMatch[5]) time_start = `${dateMatch[4].padStart(2, '0')}:${dateMatch[5]}`; }
+    const normalized = text.toLocaleLowerCase('ru').replace(/ё/g, 'е');
+    if (!date_start && /\bсегодня\b/iu.test(normalized)) date_start = localDay();
+    if (!date_start && /\bзавтра\b/iu.test(normalized)) date_start = localDay(undefined, 1);
     for (const match of timeMatches) { const time = `${match[1].padStart(2, '0')}:${match[2]}`; const prefix = match[0].trim().toLocaleLowerCase('ru'); if (prefix.startsWith('до')) time_end = time; else if (!time_start) time_start = time; }
     if (!time_start) {
         const bare = text.split(/\r?\n/).map(x => x.trim()).find(line => TIME.test(line) && line.length <= 12 && !/^(?:с|от|к|до|на)\s*\d{1,2}[:.]\d{2}$/iu.test(line));
