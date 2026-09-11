@@ -1,17 +1,32 @@
 import { PublicChannelAdapter } from '@/services/telegram';
 import { authorizeCronRequest } from '@/lib/cron-auth';
+import { db } from '@/lib/db';
+import { hasRole } from '@/lib/domain';
 import { serviceDb, check } from '@/lib/service-db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-  const auth = authorizeCronRequest(request, process.env.CRON_SECRET);
+async function authorize(request: Request) {
+  const cron = authorizeCronRequest(request, process.env.CRON_SECRET);
+  if (cron.ok) return true;
 
-  if (!auth.ok) {
+  // Keep the scheduled endpoint protected, but allow an authenticated admin
+  // to launch an import manually when GitHub Actions secrets are not configured.
+  const client = await db();
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) return false;
+  const { data: profile } = await client.from('profiles').select('roles').eq('id', user.id).maybeSingle();
+  return hasRole(profile?.roles ?? null, 'admin');
+}
+
+export async function GET(request: Request) {
+  const authorized = await authorize(request);
+  if (!authorized) {
+    const cronConfigured = Boolean(process.env.CRON_SECRET);
     return Response.json(
-      { error: auth.status === 503 ? 'Cron is not configured' : 'Unauthorized' },
-      { status: auth.status },
+      { error: cronConfigured ? 'Unauthorized' : 'Cron is not configured' },
+      { status: cronConfigured ? 401 : 503 },
     );
   }
 
