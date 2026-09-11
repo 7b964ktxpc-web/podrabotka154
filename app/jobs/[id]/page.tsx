@@ -21,6 +21,11 @@ function dateLabel(value: string | null) {
     return new Date(value + 'T12:00:00Z').toLocaleDateString('ru-RU');
 }
 
+function postedLabel(value: string | null) {
+    if (!value) return 'не указано';
+    return new Date(value).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const j = await load(id);
@@ -50,7 +55,7 @@ export default async function Detail({ params }: { params: Promise<{ id: string 
         '@type': 'JobPosting',
         title: j.title,
         description: j.description,
-        datePosted: j.published_at,
+        datePosted: j.source_posted_at || j.published_at,
         validThrough: j.expires_at,
         hiringOrganization: { '@type': 'Organization', name: e.name },
         jobLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressLocality: j.city, streetAddress: j.address_raw, addressCountry: 'RU' } },
@@ -66,6 +71,7 @@ export default async function Detail({ params }: { params: Promise<{ id: string 
                 <h1>{j.title}</h1>
                 <p className="salary">{salaryLabel(j)}</p>
                 <div className="meta"><span>Дата: {dateLabel(j.date_start)}{j.date_end ? ' по ' + dateLabel(j.date_end) : ''}</span><span>Время: {j.time_start?.slice(0, 5) || 'не указано'}{j.time_end ? ' - ' + j.time_end.slice(0, 5) : ''}</span></div>
+                <p className="small muted" style={{ marginTop: 10 }}>Выложено в источнике: {postedLabel(j.source_posted_at)}</p>
                 <hr className="divider" />
                 <h2>Что нужно делать</h2>
                 <p className="description">{j.description}</p>
@@ -75,7 +81,7 @@ export default async function Detail({ params }: { params: Promise<{ id: string 
                 <Address job={j} />
                 {j.map_url && <p><a className="button" href={j.map_url} target="_blank" rel="noopener noreferrer">Посмотреть карту ↗</a></p>}
                 {e && <p>Работодатель: <Link href={'/employers/' + e.slug}>{e.name}</Link></p>}
-                <p className="small muted">Опубликовано: {new Date(j.published_at!).toLocaleDateString('ru-RU')}</p>
+                <p className="small muted">Опубликовано на «Подработка 154»: {j.published_at ? new Date(j.published_at).toLocaleString('ru-RU') : 'не указано'}</p>
                 <div className="row">{(sources?.length ? sources : j.source_url ? [{ source_url: j.source_url }] : []).filter(x => /^https:\/\/t\.me\//.test(x.source_url)).map(x => <a key={x.source_url} className="small" href={x.source_url} target="_blank" rel="noopener noreferrer">Оригинал в Telegram ↗</a>)}</div>
                 {j.original_text && <details><summary>Оригинальный текст объявления</summary><p className="description">{j.original_text}</p></details>}
             </article>
