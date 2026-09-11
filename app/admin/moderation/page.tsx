@@ -25,8 +25,10 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
     const { client } = await requireAdmin();
     const { data: jobs, count } = check(await client.from('jobs').select('*,employers(name)', { count: 'exact' }).in('status', ['pending_moderation', 'draft']).order('created_at', { ascending: false }).range((page - 1) * 20, page * 20 - 1));
     return <>
-        <h1>Модерация</h1>
-        <p>Автоматический парсер не публикует объявления. Проверьте оригинал, оплату, адрес и контакты.</p>
+        <div className="row" style={{justifyContent:'space-between',alignItems:'end',gap:12,marginBottom:18}}>
+            <div><span className="eyebrow">Контроль публикаций</span><h1 style={{marginBottom:6}}>Модерация</h1><p className="muted" style={{margin:0}}>Проверьте источник, оплату, адрес, дату и контакт перед публикацией.</p></div>
+            <span className="badge">{count || 0} на проверке</span>
+        </div>
         {jobs?.length ? <>
             <BulkModeration jobs={jobs.map(j => ({ id: j.id, title: j.title || 'Без названия' }))} />
             {jobs.map(j => {
@@ -47,6 +49,10 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
                         <div><strong>Телефон</strong><br />{value(j.contact_phone)}</div>
                         <div><strong>Telegram</strong><br />{value(j.contact_telegram)}</div>
                     </div>
+                    <div className="row" style={{flexWrap:'wrap',margin:'10px 0'}}>
+                        {j.source_url && <a className="button" href={j.source_url} target="_blank" rel="noopener noreferrer">Оригинал в Telegram ↗</a>}
+                        {j.source_message_id && <span className="badge">Источник привязан</span>}
+                    </div>
                     <p className="message">{j.moderation_reason || 'Ручная проверка'}</p>
                     <p style={{ whiteSpace: 'pre-wrap' }}>{j.original_text || j.description}</p>
                     <p><Link className="button" href={'/jobs/' + j.id + '/edit'}>Проверить и исправить поля</Link></p>
@@ -57,7 +63,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
                     </ActionForm>
                 </details>;
             })}
-        </> : <p>Нет объявлений, ожидающих проверки.</p>}
+        </> : <div className="empty"><h2>Очередь пуста</h2><p className="muted">Новых объявлений на ручную проверку нет.</p></div>}
         <nav>{page > 1 && <Link href={'?page=' + (page - 1)}>← Назад</Link>}{(count || 0) > page * 20 && <Link href={'?page=' + (page + 1)}>Дальше →</Link>}</nav>
     </>;
 }
