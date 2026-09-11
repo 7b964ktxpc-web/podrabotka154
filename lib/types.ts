@@ -25,6 +25,7 @@ export type Job = {
     contact_email: string | null;
     source_type: string;
     source_url: string | null;
+    source_posted_at: string | null;
     original_text: string | null;
     employer_id: string | null;
     status: string;
