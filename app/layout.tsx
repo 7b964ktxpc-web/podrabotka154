@@ -23,7 +23,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link href="/jobs">Найти работу</Link>
               <Link href="/favorites">Избранное</Link>
               <Link href="/profile">Кабинет</Link>
-              <Link className="button" href="/employer/jobs/new">+ Разместить</Link>
+              <Link className="button" href="/jobs/new">+ Разместить</Link>
             </nav>
           </div>
         </header>
