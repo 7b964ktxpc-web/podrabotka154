@@ -10,7 +10,7 @@ const NAMED_STREET_WITH_NUMBER = /(?:^|[^А-Яа-яЁёA-Za-z])([А-ЯЁ][а-я�
 const STREET_NAME_WITH_TYPE = /(?:^|[^А-Яа-яЁёA-Za-z])([А-ЯЁ][а-яё-]{3,39}\s+(?:улица|ул\.))\s*,?\s*(?:д\.?\s*)?\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?/iu;
 const STREET_WITHOUT_NUMBER = /(?:ул\.?|улица|просп\.?|проспект|пр-т|пер\.?|переулок|ш\.?|шоссе|проезд|наб\.?|набережная|бульвар|площадь|пл\.?|микрорайон|мкр\.?)\s+[А-Яа-яЁёA-Za-z-]{3,40}(?:\s+[А-Яа-яЁёA-Za-z-]{2,40})?/iu;
 const CITY_ADDRESS = /^(?:[А-Яа-яЁёA-Za-z -]{3,40},\s*\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?|(?:Новосибирск|Краснообск|Бердск|Обь)\s+\d{1,4}[А-Яа-яA-Za-z]?(?:[/\-]\d{1,4})?)$/iu;
-const DATE_TIME = /(?:дата\s*:\s*)?(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s+(\d{1,2})[:.](\d{2}))?/iu;
+const DATE_TIME = /(?:дата\s*:\s*)?(\d{1,2})[./](\d{1,2})[./](\d{2,4})(?:\s+(\d{1,2})[:.](\d{2}))?/iu;
 const TIME = /\b(\d{1,2})[:.](\d{2})\b/u;
 const ROLE_WORDS = /(?:требуется|нужен|нужна|нужны|ищем|грузчик[аи]?|курьер|водитель|помощник|работник|человек|чел\.)/iu;
 
@@ -33,15 +33,24 @@ function extractAddress(text: string): string | null {
 
 function extractDateTime(text: string): Pick<ParsedJob, 'date_start' | 'date_end' | 'time_start' | 'time_end'> {
     const dateMatch = text.match(DATE_TIME);
-    const timeMatches = [...text.matchAll(/(?:^|\n|\s)(?:с|от|к|до|на)\s*(\d{1,2})[:.](\d{2})\b/giu)];
+    const timeMatches = [...text.matchAll(/(?:^|\n|\s)(?:с|от|к|до|на|в)\s*(\d{1,2})[:.](\d{2})\b/giu)];
     let date_start: string | null = null, time_start: string | null = null, time_end: string | null = null;
-    if (dateMatch) { date_start = `${dateMatch[3]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`; if (dateMatch[4] && dateMatch[5]) time_start = `${dateMatch[4].padStart(2, '0')}:${dateMatch[5]}`; }
+    if (dateMatch) {
+        let year = Number(dateMatch[3]);
+        if (year < 100) year += 2000;
+        date_start = `${year}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`;
+        if (dateMatch[4] && dateMatch[5]) time_start = `${dateMatch[4].padStart(2, '0')}:${dateMatch[5]}`;
+    }
     const normalized = text.toLocaleLowerCase('ru').replace(/ё/g, 'е');
     if (!date_start && /\bсегодня\b/iu.test(normalized)) date_start = localDay();
     if (!date_start && /\bзавтра\b/iu.test(normalized)) date_start = localDay(undefined, 1);
-    for (const match of timeMatches) { const time = `${match[1].padStart(2, '0')}:${match[2]}`; const prefix = match[0].trim().toLocaleLowerCase('ru'); if (prefix.startsWith('до')) time_end = time; else if (!time_start) time_start = time; }
+    for (const match of timeMatches) {
+        const time = `${match[1].padStart(2, '0')}:${match[2]}`;
+        const prefix = match[0].trim().toLocaleLowerCase('ru');
+        if (prefix.startsWith('до')) time_end = time; else if (!time_start) time_start = time;
+    }
     if (!time_start) {
-        const bare = text.split(/\r?\n/).map(x => x.trim()).find(line => TIME.test(line) && line.length <= 12 && !/^(?:с|от|к|до|на)\s*\d{1,2}[:.]\d{2}$/iu.test(line));
+        const bare = text.split(/\r?\n/).map(x => x.trim()).find(line => TIME.test(line) && line.length <= 12 && !/^(?:с|от|к|до|на|в)\s*\d{1,2}[:.]\d{2}$/iu.test(line));
         if (bare) time_start = bare.match(TIME)?.[0]?.replace('.', ':') ?? null;
     }
     return { date_start, date_end: null, time_start, time_end };
@@ -66,7 +75,7 @@ function extractEmploymentType(text: string): string | null {
 }
 function isGenericTitle(line: string): boolean {
     return /^(?:ещ[её]\s*\d+|на\s+ближайшее|срочно|подработка|вакансия)\s*[🔥🚨❗️💫⭐️⚡️]*$/iu.test(line)
-        || /^(?:к|с|от|до|на)\s*\d{1,2}[:.]\d{2}$/iu.test(line)
+        || /^(?:к|с|от|до|на|в)\s*\d{1,2}[:.]\d{2}$/iu.test(line)
         || /^\d{1,2}[:.]\d{2}$/u.test(line)
         || /^(?:адрес|место|локация|оплата|контакт|телефон)\s*:/iu.test(line);
 }
