@@ -2,10 +2,10 @@ name: process notifications
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   schedule:
-    # Start at minute 2 to avoid the top-of-hour GitHub Actions load spike.
-    - cron: "2-57/5 * * * *"
+    - cron: '2-57/5 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -17,12 +17,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Validate worker secrets
         env:
           SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
@@ -41,4 +44,3 @@ jobs:
           PARSER_PROVIDER: conservative
           WORKER_BATCH_SIZE: 50
         run: npm run worker:once
-# queue worker trigger check
