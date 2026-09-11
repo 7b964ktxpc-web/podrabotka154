@@ -19,14 +19,17 @@ export default async function Admin() {
 
   return (
     <>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'end' }}>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'end', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <p className="eyebrow">Администрирование</p>
           <h1>Обзор сервиса</h1>
         </div>
-        <Link href="/admin/moderation" className="button primary">
-          Модерация{pendingCount ? ` · ${pendingCount}` : ''}
-        </Link>
+        <div className="row" style={{ gap: 8 }}>
+          <Link href="/api/telegram/import-public" className="button">Импорт Telegram ↻</Link>
+          <Link href="/admin/moderation" className="button primary">
+            Модерация{pendingCount ? ` · ${pendingCount}` : ''}
+          </Link>
+        </div>
       </div>
 
       <div className="data-list">
