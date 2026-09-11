@@ -11,8 +11,6 @@ async function authorize(request: Request) {
   const cron = authorizeCronRequest(request, process.env.CRON_SECRET);
   if (cron.ok) return true;
 
-  // Keep the scheduled endpoint protected, but allow an authenticated admin
-  // to launch an import manually when GitHub Actions secrets are not configured.
   const client = await db();
   const { data: { user } } = await client.auth.getUser();
   if (!user) return false;
@@ -50,8 +48,8 @@ export async function GET(request: Request) {
       }));
 
       const newMessages = saved ?? [];
-      // INSERT on telegram_messages fires the database enqueue_message trigger.
-      // The worker owns parsing; this route must never parse synchronously.
+      // New Telegram messages are queued for parsing, but publication remains
+      // a separate moderation step. The worker may parse; it must not approve.
       queued += newMessages.length;
 
       await adapter.disconnect();
