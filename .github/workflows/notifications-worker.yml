@@ -1,6 +1,8 @@
 name: process notifications
 
 on:
+  push:
+    branches: [main]
   schedule:
     # Start at minute 2 to avoid the top-of-hour GitHub Actions load spike.
     - cron: "2-57/5 * * * *"
