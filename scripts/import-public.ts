@@ -4,12 +4,12 @@ import { PublicChannelAdapter, type TelegramMessage } from '../services/telegram
 type Source = { id: string; username: string };
 
 const supabaseUrl = process.env.PODRABOTKA154_SUPABASE_URL;
-const supabaseAnonKey = process.env.PODRABOTKA154_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.PODRABOTKA154_SUPABASE_KEY;
 
 if (!supabaseUrl) throw new Error('PODRABOTKA154_SUPABASE_URL is not configured');
-if (!supabaseAnonKey) throw new Error('PODRABOTKA154_SUPABASE_ANON_KEY is not configured');
+if (!supabaseKey) throw new Error('PODRABOTKA154_SUPABASE_KEY is not configured');
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
