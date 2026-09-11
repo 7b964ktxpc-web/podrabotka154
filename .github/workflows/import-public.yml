@@ -14,23 +14,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Import public Telegram vacancies
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Import public Telegram directly into Supabase
         env:
-          APP_URL: ${{ secrets.PODRABOTKA154_APP_URL }}
-          CRON_SECRET: ${{ secrets.PODRABOTKA154_CRON_SECRET }}
-        run: |
-          set -euo pipefail
-          test -n "$APP_URL"
-          test -n "$CRON_SECRET"
-          case "$APP_URL" in
-            https://*) ;;
-            *) echo "PODRABOTKA154_APP_URL must use HTTPS" >&2; exit 1 ;;
-          esac
-          curl --fail --silent --show-error --location \
-            --retry 4 \
-            --retry-delay 5 \
-            --retry-all-errors \
-            --connect-timeout 15 \
-            --max-time 90 \
-            --header "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/telegram/import-public"
+          PODRABOTKA154_SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
+          PODRABOTKA154_SUPABASE_ANON_KEY: ${{ secrets.PODRABOTKA154_SUPABASE_ANON_KEY }}
+        run: npm run import-public
