@@ -25,8 +25,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Validate Supabase secrets
+        env:
+          SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+
       - name: Import public Telegram directly into Supabase
         env:
           PODRABOTKA154_SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
-          PODRABOTKA154_SUPABASE_KEY: ${{ secrets.PODRABOTKA154_SUPABASE_ANON_KEY || secrets.PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY }}
+          PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run import-public
