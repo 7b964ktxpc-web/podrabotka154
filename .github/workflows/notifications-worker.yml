@@ -41,3 +41,4 @@ jobs:
           PARSER_PROVIDER: conservative
           WORKER_BATCH_SIZE: 50
         run: npm run worker:once
+# queue worker trigger check
