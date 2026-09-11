@@ -9,16 +9,29 @@ export type ParsedJob = {
 export function parseSalary(text: string): Pick<ParsedJob, 'salary_min' | 'salary_max' | 'salary_type'> {
     const unknown = { salary_min: null, salary_max: null, salary_type: null };
     const m = text.match(/(?<![\d.,])(?:\b(от|до)\s+)?(\d{1,3}(?:[ \u00a0]\d{3})+|\d{2,7})(?:[,.](\d{1,2}))?(?:\s*[-–—]\s*(\d{1,3}(?:[ \u00a0]\d{3})+|\d{2,7})(?:[,.](\d{1,2}))?)?\s*(?:₽|руб(?:лей|ля|ль)?\.?)(?![а-я])/iu);
-    if (!m) return unknown;
-    const n = (s: string, cents?: string) => Number(s.replace(/\s/g, '') + (cents ? '.' + cents : ''));
-    const first = n(m[2], m[3]), second = m[4] ? n(m[4], m[5]) : null;
-    if (second !== null && first > second) return unknown;
-    const prefix = text.slice(Math.max(0, m.index! - 4), m.index!) + m[0];
-    const lower = /^\s*от\s/iu.test(m[0]) || /от\s+\d/iu.test(prefix);
-    const upper = /^\s*до\s/iu.test(m[0]) || /до\s+\d/iu.test(prefix);
-    const nearby = text.slice(Math.max(0, m.index! - 20), m.index! + m[0].length + 25);
-    const type = /(?:за|\/)\s*(?:смен[ау]|день)/iu.test(nearby) ? 'shift' : /(?:за|\/)\s*час/iu.test(nearby) ? 'hour' : /(?:за|в|\/)\s*месяц/iu.test(nearby) ? 'month' : null;
-    return { salary_min: upper && second === null ? null : first, salary_max: second ?? (lower ? null : first), salary_type: type };
+    if (m) {
+        const n = (s: string, cents?: string) => Number(s.replace(/\s/g, '') + (cents ? '.' + cents : ''));
+        const first = n(m[2], m[3]), second = m[4] ? n(m[4], m[5]) : null;
+        if (second !== null && first > second) return unknown;
+        const prefix = text.slice(Math.max(0, m.index! - 4), m.index!) + m[0];
+        const lower = /^\s*от\s/iu.test(m[0]) || /от\s+\d/iu.test(prefix);
+        const upper = /^\s*до\s/iu.test(m[0]) || /до\s+\d/iu.test(prefix);
+        const nearby = text.slice(Math.max(0, m.index! - 20), m.index! + m[0].length + 25);
+        const type = /(?:за|\/)\s*(?:смен[ау]|день)/iu.test(nearby) ? 'shift' : /(?:за|\/)\s*час/iu.test(nearby) ? 'hour' : /(?:за|в|\/)\s*месяц/iu.test(nearby) ? 'month' : null;
+        return { salary_min: upper && second === null ? null : first, salary_max: second ?? (lower ? null : first), salary_type: type };
+    }
+
+    // Telegram vacancy shorthand such as "2800/8h" or "2800 / 8 ч" explicitly
+    // states that the amount is for an 8-hour shift, so it is safe to classify as shift pay.
+    const shift = text.match(/(?<![\d.,])(?:\b(от|до)\s+)?(\d{2,7})(?:[,.](\d{1,2}))?\s*\/\s*\d{1,2}\s*(?:h|ч(?:ас(?:а|ов)?)?|часа?)\b/iu);
+    if (shift) {
+        const amount = Number(`${shift[2]}${shift[3] ? `.${shift[3]}` : ''}`);
+        const prefix = text.slice(Math.max(0, shift.index! - 4), shift.index!) + shift[0];
+        const lower = /^\s*от\s/iu.test(shift[0]) || /от\s+\d/iu.test(prefix);
+        const upper = /^\s*до\s/iu.test(shift[0]) || /до\s+\d/iu.test(prefix);
+        return { salary_min: upper ? null : amount, salary_max: lower || upper ? null : amount, salary_type: 'shift' };
+    }
+    return unknown;
 }
 export function fingerprint(job: Partial<ParsedJob>): string {
     const fields = ['title', 'description', 'salary_min', 'salary_max', 'salary_type', 'city', 'address', 'date_start', 'date_end', 'time_start', 'time_end', 'contact_phone', 'contact_telegram', 'contact_email'] as const;
