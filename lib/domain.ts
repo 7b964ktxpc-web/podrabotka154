@@ -20,12 +20,10 @@ export function parseSalary(text: string): Pick<ParsedJob, 'salary_min' | 'salar
         const type = /(?:за|\/)\s*(?:смен[ау]|день)/iu.test(nearby) ? 'shift' : /(?:за|\/)\s*час/iu.test(nearby) ? 'hour' : /(?:за|в|\/)\s*месяц/iu.test(nearby) ? 'month' : null;
         return { salary_min: upper && second === null ? null : first, salary_max: second ?? (lower ? null : first), salary_type: type };
     }
-
-    // Telegram vacancy shorthand such as "2800/8h" or "2800 / 8 ч" explicitly
-    // states that the amount is for an 8-hour shift, so it is safe to classify as shift pay.
-    const shift = text.match(/(?<![\d.,])(?:\b(от|до)\s+)?(\d{2,7})(?:[,.](\d{1,2}))?\s*\/\s*\d{1,2}\s*(?:h|ч(?:ас(?:а|ов)?)?|часа?)\b/iu);
+    const shift = text.match(/(?<![\d.,])(?:\b(от|до)\s+)?(\d{2,7})(?:[,.](\d{1,2}))?\s*\/\s*(\d{1,2})\s*(?:h|ч(?:ас(?:а|ов)?)?|часа?)\b/iu);
     if (shift) {
         const amount = Number(`${shift[2]}${shift[3] ? `.${shift[3]}` : ''}`);
+        if (!Number.isFinite(amount) || amount < 100) return unknown;
         const prefix = text.slice(Math.max(0, shift.index! - 4), shift.index!) + shift[0];
         const lower = /^\s*от\s/iu.test(shift[0]) || /от\s+\d/iu.test(prefix);
         const upper = /^\s*до\s/iu.test(shift[0]) || /до\s+\d/iu.test(prefix);
