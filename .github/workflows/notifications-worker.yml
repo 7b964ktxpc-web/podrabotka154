@@ -27,16 +27,10 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY }}
-          PUSH_PUBLIC_KEY: ${{ secrets.PODRABOTKA154_PUSH_PUBLIC_KEY }}
-          PUSH_PRIVATE_KEY: ${{ secrets.PODRABOTKA154_PUSH_PRIVATE_KEY }}
-          PUSH_SUBJECT: ${{ secrets.PODRABOTKA154_PUSH_SUBJECT }}
         run: |
           set -euo pipefail
           test -n "$SUPABASE_URL"
           test -n "$SUPABASE_SERVICE_ROLE_KEY"
-          test -n "$PUSH_PUBLIC_KEY"
-          test -n "$PUSH_PRIVATE_KEY"
-          test -n "$PUSH_SUBJECT"
       - name: Process queue
         env:
           SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
