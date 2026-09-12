@@ -17,7 +17,7 @@ export const jobSchema = z.object({
     .refine(p => (p.latitude === null) === (p.longitude === null), { message: 'Укажите обе координаты или оставьте обе пустыми', path: ['latitude'] });
 export const employerSchema = z.object({ name: z.string().trim().min(2).max(160), slug: z.string().regex(/^[a-z0-9][a-z0-9-]{2,70}$/), description: z.string().max(10000).default(''), city_id: z.string().uuid(), contact_phone: phone, contact_telegram: telegram, website: url, contact_person: optional(120), logo_url: url });
 export const credentials = z.object({ email: z.string().email().max(254), password: z.string().min(10).max(128) });
-export const productSchema = z.object({ id: z.string().uuid(), name: z.string().min(2).max(120), price_kopecks: z.coerce.number().int().min(0).max(100000000), days: z.coerce.number().int().min(1).max(365), priority: z.coerce.number().int().min(0).max(100), placements: z.coerce.number().int().min(0).max(10000), active: z.boolean() });
+export const productSchema = z.object({ id: z.string().uuid(), name: z.string().min(2).max(120), price: z.coerce.number().finite().min(0).max(1000000).transform(v => Math.round(v * 100)), days: z.coerce.number().int().min(1).max(365), priority: z.coerce.number().int().min(0).max(100), placements: z.coerce.number().int().min(0).max(10000), active: z.boolean() });
 function authReason(message: string, code: string): string | null {
     if (!message && !code) return null;
     const m = message.toLowerCase();
@@ -48,6 +48,14 @@ export function friendly(error: unknown): string {
     if (msg.includes('INVALID_MAP_URL')) return 'Ссылка на карту должна начинаться с https://.';
     if (msg.includes('FREE_LIMIT')) return 'Бесплатный лимит занят. Дождитесь завершения активной вакансии или используйте пакет размещений.';
     if (msg.includes('EMPLOYER_REQUIRED')) return 'Сначала заполните профиль работодателя.';
+    if (msg.includes('MISSING_TITLE')) return 'Укажите название вакансии.';
+    if (msg.includes('MISSING_CITY')) return 'Укажите город.';
+    if (msg.includes('MISSING_ADDRESS')) return 'Добавьте адрес или хотя бы один контакт — без них вакансию нельзя опубликовать.';
+    if (msg.includes('MISSING_CONTACT')) return 'Добавьте контакт: телефон, Telegram или email.';
+    if (msg.includes('MISSING_SALARY')) return 'Укажите оплату (минимум или максимум).';
+    if (msg.includes('MISSING_DATE')) return 'Укажите дату начала работы.';
+    if (msg.includes('MISSING_TIME')) return 'Укажите время начала.';
+    if (msg.includes('EMPTY_JOB')) return 'Добавьте адрес, контакт или оплату — пустую вакансию публиковать нельзя.';
     if (msg.includes('EXPIRED_DATE')) return 'Дата окончания уже прошла.';
     if (msg.includes('RATE_LIMIT')) return 'Слишком много попыток. Подождите немного и повторите.';
     if (msg.includes('SEARCH_LIMIT')) return 'Можно сохранить до 50 поисков. Удалите ненужный поиск.';
