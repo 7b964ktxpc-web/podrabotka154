@@ -4,7 +4,9 @@ import { loginAction, resetPassword } from '@/app/actions';
 
 export const metadata = { title: 'Войти', robots: { index: false, follow: false } };
 
-export default function Login() {
+export default async function Login({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const notice = String((await searchParams).notice || '');
+  const noticeMessage = notice === 'confirmation_failed' ? 'Ссылка из письма не сработала. Проверьте настройки подтверждения или попробуйте войти снова.' : null;
   return (
     <section className="auth-page">
       <div className="auth-card">
@@ -12,6 +14,8 @@ export default function Login() {
         <span className="eyebrow">Личный кабинет</span>
         <h1>С возвращением</h1>
         <p className="lead">Войдите, чтобы сохранять вакансии, получать уведомления и управлять откликами.</p>
+
+        {noticeMessage && <p role="alert" className="message error">{noticeMessage}</p>}
 
         <div className="auth-switch" aria-label="Действие с аккаунтом">
           <Link className="auth-choice active" href="/login">

@@ -8,4 +8,5 @@ export async function GET(req: Request) { const url = new URL(req.url); const co
         const next = url.searchParams.get('next') === '/profile/password' ? '/profile/password' : '/profile';
         return NextResponse.redirect(appUrl() + next);
     }
-} return NextResponse.redirect(appUrl() + '/login?notice=confirmation_failed'); }
+} const failed = url.searchParams.get('error') === 'access_denied' ? '?notice=confirmation_failed&reason=access_denied' : '?notice=confirmation_failed';
+return NextResponse.redirect(appUrl() + '/login' + failed); }
