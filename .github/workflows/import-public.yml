@@ -43,8 +43,11 @@ jobs:
         run: |
           set -euo pipefail
           echo "Supabase host: $(printf '%s' "$SUPABASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
-          curl -4 -fsS --connect-timeout 10 --max-time 20 -o /dev/null -w 'IPv4 HTTP %{http_code}\n' "$SUPABASE_URL/rest/v1/"
-          curl -6 -fsS --connect-timeout 10 --max-time 20 -o /dev/null -w 'IPv6 HTTP %{http_code}\n' "$SUPABASE_URL/rest/v1/" || true
+          ipv4_code="$(curl -4 -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_code}' "$SUPABASE_URL/rest/v1/" || true)"
+          ipv6_code="$(curl -6 -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_code}' "$SUPABASE_URL/rest/v1/" || true)"
+          echo "IPv4 HTTP ${ipv4_code}"
+          echo "IPv6 HTTP ${ipv6_code}"
+          test "$ipv4_code" != "000"
 
       - name: Import public Telegram directly into Supabase
         env:
