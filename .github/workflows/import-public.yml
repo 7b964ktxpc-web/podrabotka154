@@ -37,6 +37,15 @@ jobs:
           test -n "$SUPABASE_URL"
           test -n "$SUPABASE_SERVICE_ROLE_KEY"
 
+      - name: Test Supabase network
+        env:
+          SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
+        run: |
+          set -euo pipefail
+          echo "Supabase host: $(printf '%s' "$SUPABASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
+          curl -4 -fsS --connect-timeout 10 --max-time 20 -o /dev/null -w 'IPv4 HTTP %{http_code}\n' "$SUPABASE_URL/rest/v1/"
+          curl -6 -fsS --connect-timeout 10 --max-time 20 -o /dev/null -w 'IPv6 HTTP %{http_code}\n' "$SUPABASE_URL/rest/v1/" || true
+
       - name: Import public Telegram directly into Supabase
         env:
           PODRABOTKA154_SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
