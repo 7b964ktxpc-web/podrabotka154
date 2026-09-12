@@ -35,16 +35,16 @@ npm run dev
 
 ## Telegram-импорт
 
-`.github/workflows/import-public.yml` запускается каждые 5 минут, начиная с 7-й минуты каждого часа (`7-57/5`), и вручную через `workflow_dispatch`. GitHub Actions вызывает:
+`.github/workflows/import-public.yml` запускается каждые 5 минут, начиная с 7-й минуты каждого часа (`7-57/5`), и вручную через `workflow_dispatch`.
 
-`GET /api/telegram/import-public`
+GitHub Actions запускает `npm run import-public`, который напрямую обращается к Supabase с service-role ключом, получает активные источники `public_web`, читает публичные Telegram-страницы `t.me/s/<username>` и сохраняет оригиналы сообщений через RPC. После сохранения сообщения попадают в очередь `parse`.
 
-с `Authorization: Bearer <CRON_SECRET>`.
+Автоматической публикации из Telegram нет: после разбора вакансия сохраняется со статусом `pending_moderation` и ждёт ручного решения администратора.
 
 Для работы расписания в GitHub Repository Secrets должны быть заданы:
 
-- `PODRABOTKA154_APP_URL` — HTTPS-адрес приложения Render;
-- `PODRABOTKA154_CRON_SECRET` — то же значение, что `CRON_SECRET` в Render.
+- `PODRABOTKA154_SUPABASE_URL` — URL проекта Supabase;
+- `PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY` — серверный ключ Supabase.
 
 ## Уведомления и Web Push
 
@@ -72,7 +72,7 @@ npm run dev
 
 ## Render
 
-`render.yaml` описывает бесплатный Web Service `podrabotka154` с Node.js и `npm run build` / `npm start`.
+`render.yaml` описывает бесплатный Web Service с Node.js, `npm run build` / `npm start` и health check `/api/health`.
 
 Обязательные переменные Render:
 
@@ -84,8 +84,6 @@ npm run dev
 - `PUSH_PRIVATE_KEY`
 - `PUSH_SUBJECT`
 
-`CRON_SECRET` генерируется Render в Blueprint-конфигурации; после создания сервиса его значение нужно скопировать в GitHub Secret `PODRABOTKA154_CRON_SECRET`.
-
 ## Проверки
 
 CI GitHub Actions выполняет:
@@ -96,7 +94,11 @@ npm test
 npm run build
 ```
 
-Это не заменяет проверку реального Supabase, Render, Telegram, мобильного браузера и production-секретов.
+Рабочий порядок production-пайплайна:
+
+**Worker → Telegram public import → Parser → Moderation → Publication → Final Render check**
+
+Final Render check включает проверку реального production-деплоя, health endpoint, главной страницы, каталога, карточки вакансии, ссылок на карту и отсутствия автоматической публикации импортированных Telegram-вакансий.
 
 ## Документация
 
