@@ -5,8 +5,14 @@ import { db } from '@/lib/db';
 import { hasRole } from '@/lib/domain';
 import { serviceDb, check } from '@/lib/service-db';
 import { runWorkerTick } from '@/worker/run';
+import { ensureBackgroundWorker } from '@/worker/autostart';
 
 dns.setDefaultResultOrder('ipv4first');
+
+// Start the embedded parse worker for this process. It runs continuously on the
+// long-lived Render web process, so imported messages become jobs even when no
+// external worker service or cron is configured.
+ensureBackgroundWorker();
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,6 +32,10 @@ function errorText(e: unknown): string {
   if (e instanceof Error) {
     const cause = e.cause instanceof Error ? `: ${e.cause.message}` : '';
     return `${e.message}${cause}`.trim();
+  }
+  if (e && typeof e === 'object' && 'message' in e) {
+    const value = (e as { message: unknown }).message;
+    if (typeof value === 'string') return value;
   }
   return String(e);
 }
@@ -83,12 +93,13 @@ export async function GET(request: Request) {
     }
   }
 
-  // Drain the parse queue in the same request so imported messages become jobs
-  // even when no dedicated worker service is running.
+  // Drain a small batch in this request for fast feedback. The embedded
+  // background worker keeps draining continuously afterwards, so an aborted
+  // request cannot leave the whole queue locked.
   let parsed: number | null = null;
   let parsedError: string | null = null;
   try {
-    const drained = await runWorkerTick({ batch: 25, signal: request.signal });
+    const drained = await runWorkerTick({ batch: 10 });
     parsed = drained.processed;
   } catch (e) {
     parsedError = errorText(e);
