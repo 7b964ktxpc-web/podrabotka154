@@ -8,7 +8,7 @@ export async function GET() {
   const anonSet = Boolean(process.env.SUPABASE_ANON_KEY?.trim() || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());
   const serviceSet = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
   let serviceReachable = false;
-  let adminConfigured = false;
+  let adminConfigured: boolean | null = null;
   let serviceError: string | null = null;
   if (serviceSet) {
     try {
