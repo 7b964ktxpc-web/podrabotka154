@@ -14,35 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install dependencies
-        run: npm install
-      - name: Validate Supabase secrets
+      - name: Validate secrets
         env:
-          SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY }}
+          PODRABOTKA154_APP_URL: ${{ secrets.PODRABOTKA154_APP_URL }}
+          PODRABOTKA154_CRON_SECRET: ${{ secrets.PODRABOTKA154_CRON_SECRET }}
         run: |
           set -euo pipefail
-          test -n "$SUPABASE_URL"
-          test -n "$SUPABASE_SERVICE_ROLE_KEY"
-      - name: Test Supabase network
+          test -n "$PODRABOTKA154_APP_URL"
+          test -n "$PODRABOTKA154_CRON_SECRET"
+      # t.me is unreachable from GitHub Actions runners, so this job only
+      # triggers the production app, which fetches Telegram and drains the
+      # parse queue in the same request.
+      - name: Trigger production import
         env:
-          SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
+          PODRABOTKA154_APP_URL: ${{ secrets.PODRABOTKA154_APP_URL }}
+          PODRABOTKA154_CRON_SECRET: ${{ secrets.PODRABOTKA154_CRON_SECRET }}
         run: |
           set -euo pipefail
-          echo "Supabase host: $(printf '%s' "$SUPABASE_URL" | sed -E 's#https?://([^/]+).*#\1#')"
-          ipv4_code="$(curl -4 -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_code}' "$SUPABASE_URL/rest/v1/" || true)"
-          ipv6_code="$(curl -6 -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_code}' "$SUPABASE_URL/rest/v1/" || true)"
-          echo "IPv4 HTTP ${ipv4_code}"
-          echo "IPv6 HTTP ${ipv6_code}"
-          test "$ipv4_code" != "000"
-      - name: Import public Telegram directly into Supabase
-        env:
-          PODRABOTKA154_SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
-          PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PODRABOTKA154_SUPABASE_SERVICE_ROLE_KEY }}
-        run: npm run import-public
+          curl -fsS --connect-timeout 10 --max-time 120 \
+            "${PODRABOTKA154_APP_URL}/api/telegram/import-public" \
+            -H "Authorization: Bearer ${PODRABOTKA154_CRON_SECRET}"

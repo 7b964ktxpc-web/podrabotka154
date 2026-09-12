@@ -30,9 +30,12 @@ function decodeHtml(value: string): string {
     return value.replace(/<br\s*\/?>(?:\r?\n)?/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&#x([0-9a-f]+);/gi, (_, h: string) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n))).replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 /** Reads only the public Telegram web page; it does not bypass access controls. */
+export const DEFAULT_PUBLIC_BASES = ['https://t.me/s/'];
+/** t.me may be unreachable from some hosting networks; telegram.dog / telegram.me serve the same widget. */
+export const FALLBACK_PUBLIC_BASES = ['https://t.me/s/', 'https://telegram.dog/s/', 'https://telegram.me/s/'];
 export class PublicChannelAdapter implements TelegramSourceAdapter {
     private connected = false;
-    constructor(private username: string, private limit = 20) { }
+    constructor(private username: string, private limit = 20, private bases: string[] = DEFAULT_PUBLIC_BASES, private timeoutMs = 20000) { }
     async connect() {
         if (!/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(this.username)) throw new Error('Некорректный username Telegram');
         this.connected = true;
@@ -46,21 +49,33 @@ export class PublicChannelAdapter implements TelegramSourceAdapter {
     }
     async fetchMessages(): Promise<TelegramMessage[]> {
         if (!this.connected) throw new Error('Адаптер не подключён');
-        const response = await fetch(`https://t.me/s/${encodeURIComponent(this.username)}`, { headers: { 'User-Agent': 'Mozilla/5.0 Podrabotka154/1.0' }, cache: 'no-store', signal: AbortSignal.timeout(20000) });
-        if (!response.ok) throw new Error(`Telegram вернул HTTP ${response.status}`);
-        const html = await response.text();
-        const blocks = [...html.matchAll(/<div class="tgme_widget_message_wrap[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi)].map(m => m[0]);
-        const out: TelegramMessage[] = [];
-        for (const block of blocks.slice(-this.limit)) {
-            const post = block.match(/data-post="([A-Za-z0-9_]+)\/(\d+)"/i);
-            const time = block.match(/<time[^>]+datetime="([^"]+)"/i);
-            const text = block.match(/<div class="tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/i);
-            if (!post || !time || !text) continue;
-            const message = decodeHtml(text[1]);
-            if (!message) continue;
-            out.push(this.normalizeMessage({ telegram_message_id: Number(post[2]), message_text: message, message_date: new Date(time[1]).toISOString(), message_url: `https://t.me/${post[1]}/${post[2]}`, raw_payload: { source: 'telegram_public_web', post: post[0] } }));
+        const encoded = encodeURIComponent(this.username);
+        const headers = { 'User-Agent': 'Mozilla/5.0 Podrabotka154/1.0' };
+        let lastError: unknown = null;
+        for (const base of this.bases) {
+            try {
+                const response = await fetch(`${base}${encoded}`, { headers, cache: 'no-store', signal: AbortSignal.timeout(this.timeoutMs) });
+                if (!response.ok) { lastError = new Error(`Telegram вернул HTTP ${response.status} (${new URL(base).hostname})`); continue; }
+                const html = await response.text();
+                const blocks = [...html.matchAll(/<div class="tgme_widget_message_wrap[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi)].map(m => m[0]);
+                const out: TelegramMessage[] = [];
+                for (const block of blocks.slice(-this.limit)) {
+                    const post = block.match(/data-post="([A-Za-z0-9_]+)\/(\d+)"/i);
+                    const time = block.match(/<time[^>]+datetime="([^"]+)"/i);
+                    const text = block.match(/<div class="tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/i);
+                    if (!post || !time || !text) continue;
+                    const message = decodeHtml(text[1]);
+                    if (!message) continue;
+                    out.push(this.normalizeMessage({ telegram_message_id: Number(post[2]), message_text: message, message_date: new Date(time[1]).toISOString(), message_url: `https://t.me/${post[1]}/${post[2]}`, raw_payload: { source: 'telegram_public_web', post: post[0] } }));
+                }
+                return out;
+            } catch (e: unknown) {
+                const name = (e as { name?: string }).name;
+                if (name === 'AbortError' || name === 'TimeoutError') { lastError = e; continue; }
+                throw e;
+            }
         }
-        return out;
+        throw lastError instanceof Error ? lastError : new Error('Telegram недоступен');
     }
     async *subscribe(signal: AbortSignal) { if (signal.aborted) return; for (const m of await this.fetchMessages()) { if (signal.aborted) return; yield m; } }
 }
