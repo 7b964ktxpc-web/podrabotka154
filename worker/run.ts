@@ -12,6 +12,15 @@ function assertParserProvider() {
   }
 }
 
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message || e.name;
+  if (e && typeof e === 'object' && 'message' in e) {
+    const value = (e as { message: unknown }).message;
+    return typeof value === 'string' && value ? value : 'Worker error';
+  }
+  return 'Worker error';
+}
+
 function createRuntime(c: SupabaseClient) {
   const parser = createVacancyParser();
   const pushReady = Boolean(process.env.PUSH_PUBLIC_KEY && process.env.PUSH_PRIVATE_KEY);
@@ -75,8 +84,8 @@ export async function runWorkerTick(options: { batch?: number; signal?: AbortSig
       check(await c.from('work_queue').update({ done_at: new Date().toISOString(), locked_until: null, error: null }).eq('id', item.id).eq('lock_token', item.lock_token));
       processed++;
     } catch (e) {
-      const error = e instanceof Error ? e.message : 'Worker error';
-      console.error('Work item failed', item.id, item.kind);
+      const error = errorMessage(e);
+      console.error('Work item failed', item.id, item.kind, error);
       check(await c.from('work_queue').update({ error: error.slice(0, 500), locked_until: null, available_at: new Date(Date.now() + Math.min(3600, 2 ** item.attempts * 15) * 1000).toISOString() }).eq('id', item.id).eq('lock_token', item.lock_token));
       if (item.kind === 'parse') check(await c.from('parser_runs').insert({ message_id: item.payload.message_id, provider: process.env.AI_PARSER_ENABLED === 'true' || process.env.PARSER_PROVIDER === 'ai' ? 'ai' : 'conservative', error: error.slice(0, 500) }));
     }

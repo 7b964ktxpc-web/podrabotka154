@@ -4,7 +4,6 @@ import { authorizeCronRequest } from '@/lib/cron-auth';
 import { db } from '@/lib/db';
 import { hasRole } from '@/lib/domain';
 import { serviceDb, check } from '@/lib/service-db';
-import { runWorkerTick } from '@/worker/run';
 import { ensureBackgroundWorker } from '@/worker/autostart';
 
 dns.setDefaultResultOrder('ipv4first');
@@ -93,21 +92,10 @@ export async function GET(request: Request) {
     }
   }
 
-  // Drain a small batch in this request for fast feedback. The embedded
-  // background worker keeps draining continuously afterwards, so an aborted
-  // request cannot leave the whole queue locked.
-  let parsed: number | null = null;
-  let parsedError: string | null = null;
-  try {
-    const drained = await runWorkerTick({ batch: 10 });
-    parsed = drained.processed;
-  } catch (e) {
-    parsedError = errorText(e);
-    console.error('Parse drain failed', e);
-  }
-
+  // Parsing happens on the embedded background worker (started at module load),
+  // so the request stays fast and two runners never race for queue items.
   return Response.json(
-    { ok: failed === 0, results, queue: { queued, failed }, parsed, parsedError },
+    { ok: failed === 0, results, queue: { queued, failed } },
     { status: failed === 0 ? 200 : 502 },
   );
 }
