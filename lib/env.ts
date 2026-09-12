@@ -4,6 +4,7 @@ function read(key: string): string | undefined {
 
 const FALLBACK_SUPABASE_URL = 'https://rweitwvwdnjxwovmvnwm.supabase.co';
 const FALLBACK_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Rj2Ecn9ocMi66CChSrK0CQ_iXxc7wO5';
+const FALLBACK_PRODUCTION_APP_URL = 'https://podrabotka154-1.onrender.com';
 
 export function env(key: string): string {
   const value =
@@ -24,7 +25,7 @@ export function appUrl() {
   const renderUrl = read('RENDER_EXTERNAL_URL');
   if (renderUrl) return renderUrl.replace(/\/$/, '');
 
-  return 'http://localhost:3000';
+  return process.env.NODE_ENV === 'production' ? FALLBACK_PRODUCTION_APP_URL : 'http://localhost:3000';
 }
 
 export function configured() {
