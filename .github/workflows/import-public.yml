@@ -1,9 +1,6 @@
 name: import public Telegram
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     - cron: "7-57/5 * * * *"
   workflow_dispatch:
@@ -19,15 +16,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install dependencies
         run: npm install
-
       - name: Validate Supabase secrets
         env:
           SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
@@ -36,7 +30,6 @@ jobs:
           set -euo pipefail
           test -n "$SUPABASE_URL"
           test -n "$SUPABASE_SERVICE_ROLE_KEY"
-
       - name: Test Supabase network
         env:
           SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
@@ -48,7 +41,6 @@ jobs:
           echo "IPv4 HTTP ${ipv4_code}"
           echo "IPv6 HTTP ${ipv6_code}"
           test "$ipv4_code" != "000"
-
       - name: Import public Telegram directly into Supabase
         env:
           PODRABOTKA154_SUPABASE_URL: ${{ secrets.PODRABOTKA154_SUPABASE_URL }}
