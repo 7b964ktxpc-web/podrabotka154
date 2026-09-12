@@ -20,7 +20,14 @@ export function Address({ job }: { job: Pick<Job, 'city' | 'address_raw' | 'addr
 
 function postedLabel(value: string | null) {
     if (!value) return null;
-    return new Date(value).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const d = new Date(value), now = new Date();
+    const same = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    if (same(d, now)) return 'Сегодня в ' + time;
+    const y = new Date(now); y.setDate(y.getDate() - 1);
+    if (same(d, y)) return 'Вчера в ' + time;
+    const days = Math.floor((now.getTime() - d.getTime()) / 86400000);
+    return days < 14 ? days + ' дн. назад, ' + time : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
 }
 
 export function JobCard({ job, saved = false, preview = false }: { job: Job; saved?: boolean; preview?: boolean; }) {
@@ -28,6 +35,7 @@ export function JobCard({ job, saved = false, preview = false }: { job: Job; sav
     const employment = employmentLabel(job.employment_type);
     const posted = postedLabel(job.source_posted_at);
     return <article className={'job' + ((job.commercial || 0) >= 2 ? ' highlight' : '')}>
+        {job.instant && <span className="badge" style={{ float: 'right' }}>⚡ Оплата сразу</span>}
         <div className="job-top"><div><p className="small muted">{job.source_type === 'employer' ? 'От работодателя' : job.source_type === 'telegram' ? 'Источник: Telegram' : 'Объявление редакции'}</p><h2>{preview ? job.title : <Link href={'/jobs/' + job.id}>{job.title}</Link>}</h2></div>{!preview && <Favorite id={job.id} initial={saved}/>}</div>
         <p className="salary">{salaryLabel(job)}</p>
         {(payment || employment) && <div className="meta">{payment && <span>💳 {payment}</span>}{employment && <span>🧰 {employment}</span>}</div>}
