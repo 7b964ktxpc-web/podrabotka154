@@ -35,7 +35,6 @@ export function JobCard({ job, saved = false, preview = false }: { job: Job; sav
     const employment = employmentLabel(job.employment_type);
     const posted = postedLabel(job.source_posted_at);
     return <article className={'job' + ((job.commercial || 0) >= 2 ? ' highlight' : '')}>
-        {job.instant && <span className="badge" style={{ float: 'right' }}>⚡ Оплата сразу</span>}
         <div className="job-top"><div><p className="small muted">{job.source_type === 'employer' ? 'От работодателя' : job.source_type === 'telegram' ? 'Источник: Telegram' : 'Объявление редакции'}</p><h2>{preview ? job.title : <Link href={'/jobs/' + job.id}>{job.title}</Link>}</h2></div>{!preview && <Favorite id={job.id} initial={saved}/>}</div>
         <p className="salary">{salaryLabel(job)}</p>
         {(payment || employment) && <div className="meta">{payment && <span>💳 {payment}</span>}{employment && <span>🧰 {employment}</span>}</div>}
