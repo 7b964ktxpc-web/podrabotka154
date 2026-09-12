@@ -1,5 +1,8 @@
+import dns from 'node:dns';
 import { createClient } from '@supabase/supabase-js';
 import { PublicChannelAdapter, type TelegramMessage } from '../services/telegram/index.ts';
+
+dns.setDefaultResultOrder('ipv4first');
 
 type Source = { id: string; username: string };
 
